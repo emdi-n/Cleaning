@@ -187,13 +187,28 @@
     let localTasks = [];
     let currentFirestoreTasks = [];
 
-    function calculateTaskStats(task) {
-      const today = new Date(); today.setHours(0,0,0,0);
-      const lastDone = new Date(task.lastDone); lastDone.setHours(0,0,0,0);
-      const daysElapsed = Math.floor((today - lastDone) / (1000 * 60 * 60 * 24));
-      const daysOverdue = daysElapsed - task.interval;
-      return { ...task, daysElapsed, daysOverdue };
-    }
+    // =========================================================================
+// PERCENTAGE-BASED PRIORITY ALGORITHM
+// =========================================================================
+function calculateTaskStats(task) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const lastDone = new Date(task.lastDone); lastDone.setHours(0,0,0,0);
+  
+  const daysElapsed = Math.floor((today - lastDone) / (1000 * 60 * 60 * 24));
+  const daysOverdue = daysElapsed - task.interval;
+  
+  // Calculate overdue ratio (e.g., 2.0 = 200% of cycle elapsed)
+  // Math.max(1, task.interval) prevents division by zero
+  const overdueRatio = daysElapsed / Math.max(1, task.interval); 
+
+  return { ...task, daysElapsed, daysOverdue, overdueRatio };
+}
+
+function sortTasks(tasks) {
+  return tasks
+    .map(calculateTaskStats)
+    .sort((a, b) => b.overdueRatio - a.overdueRatio); // Sorts highest percentage overdue first
+}
 
     function sortTasks(tasks) {
       return tasks.map(calculateTaskStats).sort((a, b) => b.daysOverdue - a.daysOverdue);
