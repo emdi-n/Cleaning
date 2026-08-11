@@ -129,6 +129,10 @@
           <label>Last Done Date</label>
           <input type="date" id="task-lastdone" required>
         </div>
+        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+  <input type="checkbox" id="task-priority" style="width: auto;">
+  <label for="task-priority" style="margin-bottom: 0;">★ High Priority (Jump to top when overdue)</label>
+</div>
         <button type="submit" class="submit-btn" id="single-submit-btn">Save Chore</button>
       </form>
     </div>
@@ -154,6 +158,10 @@
           <label>Set Last Done Date for All</label>
           <input type="date" id="bulk-lastdone" required>
         </div>
+        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+  <input type="checkbox" id="bulk-priority" style="width: auto;">
+  <label for="bulk-priority" style="margin-bottom: 0;">★ Mark all as High Priority</label>
+</div>
         <button type="submit" class="submit-btn">Import All Chores</button>
       </form>
     </div>
@@ -174,7 +182,7 @@
   appId: "1:750406957208:web:056ae100e9e1febf6a38ed"
 };
 
-    let db = null;
+   let db = null;
     let isFirebaseConfigured = false;
 
     if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -195,14 +203,25 @@
       const daysElapsed = Math.floor((today - lastDone) / (1000 * 60 * 60 * 24));
       const daysOverdue = daysElapsed - task.interval;
       const overdueRatio = daysElapsed / Math.max(1, task.interval);
+      const isHighPriority = !!task.isHighPriority;
 
-      return { ...task, daysElapsed, daysOverdue, overdueRatio };
+      return { ...task, daysElapsed, daysOverdue, overdueRatio, isHighPriority };
     }
 
     function sortTasks(tasks) {
       return tasks
         .map(calculateTaskStats)
-        .sort((a, b) => b.overdueRatio - a.overdueRatio);
+        .sort((a, b) => {
+          // Check if tasks are high priority AND overdue
+          const aIsHighOverdue = a.isHighPriority && a.daysOverdue > 0;
+          const bIsHighOverdue = b.isHighPriority && b.daysOverdue > 0;
+
+          if (aIsHighOverdue && !bIsHighOverdue) return -1;
+          if (!aIsHighOverdue && bIsHighOverdue) return 1;
+
+          // Otherwise sort by percentage overdue
+          return b.overdueRatio - a.overdueRatio;
+        });
     }
 
     function render() {
@@ -225,14 +244,16 @@
         if (t.daysOverdue > 0) { badgeClass = 'badge-red'; badgeText = `${t.daysOverdue}d overdue`; }
         else if (t.daysOverdue === 0) { badgeClass = 'badge-amber'; badgeText = `Due today`; }
 
+        const priorityStar = t.isHighPriority ? `<span style="color: #f59e0b; margin-right: 4px;">★</span>` : '';
+
         return `
           <div class="task-card ${isTop3 && t.daysOverdue > 0 ? 'top-priority' : ''}">
             <div class="task-info">
-              <div class="task-title">${t.name}</div>
+              <div class="task-title">${priorityStar}${t.name}</div>
               <div class="task-meta">
                 <span class="badge ${badgeClass}">${badgeText}</span>
                 <span>Every ${t.interval}d</span>
-                <button class="action-icon-btn" onclick="openEditModal('${t.id}')" title="Edit Frequency"><i data-lucide="pencil" style="width:14px;"></i></button>
+                <button class="action-icon-btn" onclick="openEditModal('${t.id}')" title="Edit Chore"><i data-lucide="pencil" style="width:14px;"></i></button>
                 <button class="action-icon-btn" onclick="deleteTask('${t.id}')" title="Delete"><i data-lucide="trash-2" style="width:14px;"></i></button>
               </div>
             </div>
@@ -259,13 +280,14 @@
       const name = document.getElementById('task-name').value;
       const interval = parseInt(document.getElementById('task-interval').value);
       const lastDone = document.getElementById('task-lastdone').value;
+      const isHighPriority = document.getElementById('task-priority').checked;
 
       if (id) {
-        if (isFirebaseConfigured) { await db.collection('chores').doc(id).update({ name, interval, lastDone }); }
-        else { const t = localTasks.find(x => x.id === id); if (t) Object.assign(t, { name, interval, lastDone }); render(); }
+        if (isFirebaseConfigured) { await db.collection('chores').doc(id).update({ name, interval, lastDone, isHighPriority }); }
+        else { const t = localTasks.find(x => x.id === id); if (t) Object.assign(t, { name, interval, lastDone, isHighPriority }); render(); }
       } else {
-        if (isFirebaseConfigured) { await db.collection('chores').add({ name, interval, lastDone }); }
-        else { localTasks.push({ id: Date.now().toString(), name, interval, lastDone }); render(); }
+        if (isFirebaseConfigured) { await db.collection('chores').add({ name, interval, lastDone, isHighPriority }); }
+        else { localTasks.push({ id: Date.now().toString(), name, interval, lastDone, isHighPriority }); render(); }
       }
       closeModals();
     }
@@ -275,6 +297,7 @@
       const rawNames = document.getElementById('bulk-names').value;
       const interval = parseInt(document.getElementById('bulk-interval').value);
       const lastDone = document.getElementById('bulk-lastdone').value;
+      const isHighPriority = document.getElementById('bulk-priority').checked;
 
       const names = rawNames.split('\n').map(n => n.trim()).filter(n => n.length > 0);
 
@@ -282,12 +305,12 @@
         const batch = db.batch();
         names.forEach(name => {
           const docRef = db.collection('chores').doc();
-          batch.set(docRef, { name, interval, lastDone });
+          batch.set(docRef, { name, interval, lastDone, isHighPriority });
         });
         await batch.commit();
       } else {
         names.forEach(name => {
-          localTasks.push({ id: Math.random().toString(), name, interval, lastDone });
+          localTasks.push({ id: Math.random().toString(), name, interval, lastDone, isHighPriority });
         });
         render();
       }
@@ -309,6 +332,7 @@
       document.getElementById('task-name').value = t.name;
       document.getElementById('task-interval').value = t.interval;
       document.getElementById('task-lastdone').value = t.lastDone;
+      document.getElementById('task-priority').checked = !!t.isHighPriority;
       document.getElementById('modal-title').innerText = "Edit Chore";
       document.getElementById('single-modal').classList.add('active');
     }
@@ -317,12 +341,14 @@
       document.getElementById('single-form').reset();
       document.getElementById('edit-task-id').value = '';
       document.getElementById('task-lastdone').value = new Date().toISOString().split('T')[0];
+      document.getElementById('task-priority').checked = false;
       document.getElementById('modal-title').innerText = "Add New Chore";
       document.getElementById('single-modal').classList.add('active');
     }
 
     function openBulkModal() {
       document.getElementById('bulk-lastdone').value = new Date().toISOString().split('T')[0];
+      document.getElementById('bulk-priority').checked = false;
       document.getElementById('bulk-modal').classList.add('active');
     }
 
@@ -331,9 +357,20 @@
       document.getElementById('bulk-modal').classList.remove('active');
     }
 
+    // 1. Instant loading from cache
+    const cachedTasks = localStorage.getItem('cleanDeckCache');
+    if (cachedTasks) {
+      try {
+        currentFirestoreTasks = JSON.parse(cachedTasks);
+        render();
+      } catch (e) { console.error(e); }
+    }
+
+    // 2. Live update from Firebase
     if (isFirebaseConfigured) {
       db.collection('chores').onSnapshot(snapshot => {
         currentFirestoreTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        localStorage.setItem('cleanDeckCache', JSON.stringify(currentFirestoreTasks));
         render();
       });
     } else { render(); }
