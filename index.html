@@ -282,11 +282,10 @@ const firebaseConfig = {
   messagingSenderId: "750406957208",
   appId: "1:750406957208:web:056ae100e9e1febf6a38ed"
 };
-
-    let db = null;
+let db = null;
     let isFirebaseConfigured = false;
 
-    if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "AIzaSyAHgbJIEAEbrZ0kagyPgfo7jdXVmhhIjEY") {
+    if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
       try {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
@@ -314,6 +313,16 @@ const firebaseConfig = {
       localStorage.setItem('cleanDeckLocalTasks', JSON.stringify(localTasks));
       localStorage.setItem('cleanDeckLogs', JSON.stringify(completedLogs));
       localStorage.setItem('cleanDeckProfiles', JSON.stringify(userProfiles));
+    }
+
+    async function syncUserProfileToFirebase(username, xpAmount) {
+      if (!isFirebaseConfigured) return;
+      try {
+        await db.collection('users').doc(username).set({
+          xp: xpAmount,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch(e) { console.error("Error updating user XP in Firebase:", e); }
     }
 
     function calculateLevel(totalXp) {
@@ -355,9 +364,15 @@ const firebaseConfig = {
       if (newName) {
         currentUser = newName;
         localStorage.setItem('cleanDeckUser', currentUser);
-        if (!userProfiles[currentUser]) { userProfiles[currentUser] = { xp: 0 }; }
+        if (!userProfiles[currentUser]) { 
+          userProfiles[currentUser] = { xp: 0 }; 
+        }
         saveLocalData();
         updateProfileBar();
+        
+        if (isFirebaseConfigured) {
+          syncUserProfileToFirebase(currentUser, userProfiles[currentUser].xp);
+        }
       }
       closeModals();
     }
@@ -436,7 +451,6 @@ const firebaseConfig = {
       const stats = calculateTaskStats(task);
       const baseXp = stats.baseXp;
 
-      // Variable Reward Roll (Dopamine Trigger)
       const roll = Math.random();
       let multiplier = 1.0;
       let title = "CHORE COMPLETE!";
@@ -460,10 +474,12 @@ const firebaseConfig = {
       const newLvl = calculateLevel(newXp).level;
 
       userProfiles[currentUser] = { xp: newXp };
+      saveLocalData();
 
       if (isFirebaseConfigured) {
         await db.collection('chores').doc(id).update({ lastDone: todayStr, lastDoneBy: currentUser });
         await db.collection('logs').add({ taskId: id, name: task.name, date: todayStr, completedBy: currentUser, xpEarned: finalXp });
+        await syncUserProfileToFirebase(currentUser, newXp);
       } else {
         task.lastDone = todayStr;
         task.lastDoneBy = currentUser;
@@ -472,7 +488,6 @@ const firebaseConfig = {
         render();
       }
 
-      // Trigger Reward Modal
       document.getElementById('reward-type-title').innerText = title;
       document.getElementById('reward-mult-text').innerText = multText;
       document.getElementById('reward-xp-text').innerText = `+${finalXp} XP`;
@@ -599,7 +614,14 @@ const firebaseConfig = {
     }
 
     function openCalendarModal() {
-      renderCalendar();
+      if (isFirebaseConfigured) {
+        db.collection('logs').get().then(snapshot => {
+          completedLogs = snapshot.docs.map(doc => doc.data());
+          renderCalendar();
+        });
+      } else {
+        renderCalendar();
+      }
       document.getElementById('calendar-modal').classList.add('active');
     }
 
@@ -652,7 +674,16 @@ const firebaseConfig = {
       document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
     }
 
+    // Realtime Firebase Listener for Users & Chores
     if (isFirebaseConfigured) {
+      db.collection('users').onSnapshot(snapshot => {
+        snapshot.docs.forEach(doc => {
+          userProfiles[doc.id] = { xp: doc.data().xp || 0 };
+        });
+        saveLocalData();
+        updateProfileBar();
+      });
+
       db.collection('chores').onSnapshot(snapshot => {
         currentFirestoreTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         render();
