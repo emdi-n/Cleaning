@@ -186,7 +186,7 @@
 
   <script>
     // PASTE YOUR FIREBASE KEYS HERE:
-const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyAHgbJIEAEbrZ0kagyPgfo7jdXVmhhIjEY",
   authDomain: "cleaning-emdi.firebaseapp.com",
   projectId: "cleaning-emdi",
@@ -194,7 +194,6 @@ const firebaseConfig = {
   messagingSenderId: "750406957208",
   appId: "1:750406957208:web:056ae100e9e1febf6a38ed"
 };
-
     let db = null;
     let isFirebaseConfigured = false;
 
@@ -298,11 +297,23 @@ const firebaseConfig = {
       const isHighPriority = document.getElementById('task-priority').checked;
 
       if (id) {
-        if (isFirebaseConfigured) { await db.collection('chores').doc(id).update({ name, interval, lastDone, isHighPriority }); }
-        else { const t = localTasks.find(x => x.id === id); if (t) Object.assign(t, { name, interval, lastDone, isHighPriority }); render(); }
+        if (isFirebaseConfigured) { 
+          await db.collection('chores').doc(id).update({ name, interval, lastDone, isHighPriority }); 
+        } else { 
+          const t = localTasks.find(x => x.id === id); 
+          if (t) Object.assign(t, { name, interval, lastDone, isHighPriority }); 
+          render(); 
+        }
       } else {
-        if (isFirebaseConfigured) { await db.collection('chores').add({ name, interval, lastDone, isHighPriority }); }
-        else { localTasks.push({ id: Date.now().toString(), name, interval, lastDone, isHighPriority }); render(); }
+        if (isFirebaseConfigured) { 
+          const newDoc = await db.collection('chores').add({ name, interval, lastDone, isHighPriority }); 
+          await db.collection('logs').add({ taskId: newDoc.id, name, date: lastDone });
+        } else { 
+          const newId = Date.now().toString();
+          localTasks.push({ id: newId, name, interval, lastDone, isHighPriority }); 
+          completedLogs.push({ taskId: newId, name, date: lastDone });
+          render(); 
+        }
       }
       closeModals();
     }
@@ -320,12 +331,17 @@ const firebaseConfig = {
         const batch = db.batch();
         names.forEach(name => {
           const docRef = db.collection('chores').doc();
+          const logRef = db.collection('logs').doc();
+          
           batch.set(docRef, { name, interval, lastDone, isHighPriority });
+          batch.set(logRef, { taskId: docRef.id, name, date: lastDone });
         });
         await batch.commit();
       } else {
         names.forEach(name => {
-          localTasks.push({ id: Math.random().toString(), name, interval, lastDone, isHighPriority });
+          const newId = Math.random().toString();
+          localTasks.push({ id: newId, name, interval, lastDone, isHighPriority });
+          completedLogs.push({ taskId: newId, name, date: lastDone });
         });
         render();
       }
@@ -433,7 +449,6 @@ const firebaseConfig = {
       document.getElementById('calendar-modal').classList.remove('active');
     }
 
-    // Load instantly from local cache on launch
     const cachedTasks = localStorage.getItem('cleanDeckCache');
     if (cachedTasks) {
       try {
@@ -442,7 +457,6 @@ const firebaseConfig = {
       } catch (e) { console.error(e); }
     }
 
-    // Live sync from Firebase
     if (isFirebaseConfigured) {
       db.collection('chores').onSnapshot(snapshot => {
         currentFirestoreTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
