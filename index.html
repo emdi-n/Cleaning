@@ -186,7 +186,7 @@
 
   <script>
     // PASTE YOUR FIREBASE KEYS HERE:
-    const firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyAHgbJIEAEbrZ0kagyPgfo7jdXVmhhIjEY",
   authDomain: "cleaning-emdi.firebaseapp.com",
   projectId: "cleaning-emdi",
@@ -194,6 +194,7 @@
   messagingSenderId: "750406957208",
   appId: "1:750406957208:web:056ae100e9e1febf6a38ed"
 };
+
     let db = null;
     let isFirebaseConfigured = false;
 
@@ -267,6 +268,29 @@
           </div>
         `;
       }).join('');
+    }
+
+    // Auto-backfill missing historical logs for existing tasks
+    async function backfillExistingTaskLogs(tasks) {
+      if (!isFirebaseConfigured || tasks.length === 0) return;
+      
+      const snapshot = await db.collection('logs').get();
+      const existingLogs = snapshot.docs.map(doc => doc.data());
+      const batch = db.batch();
+      let hasNewLogs = false;
+
+      tasks.forEach(task => {
+        const hasLog = existingLogs.some(log => log.taskId === task.id && log.date === task.lastDone);
+        if (!hasLog && task.lastDone) {
+          const logRef = db.collection('logs').doc();
+          batch.set(logRef, { taskId: task.id, name: task.name, date: task.lastDone });
+          hasNewLogs = true;
+        }
+      });
+
+      if (hasNewLogs) {
+        await batch.commit();
+      }
     }
 
     async function completeTask(id) {
@@ -462,6 +486,7 @@
         currentFirestoreTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         localStorage.setItem('cleanDeckCache', JSON.stringify(currentFirestoreTasks));
         render();
+        backfillExistingTaskLogs(currentFirestoreTasks);
       });
     } else { render(); }
 
