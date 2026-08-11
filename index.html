@@ -32,8 +32,8 @@
     h1 { font-size: 1.35rem; font-weight: 800; }
     .tagline { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
     
-    .header-actions { display: flex; gap: 8px; }
-    .btn-header { background: var(--primary-light); color: var(--primary); border: none; height: 42px; padding: 0 14px; border-radius: 12px; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .header-actions { display: flex; gap: 6px; }
+    .btn-header { background: var(--primary-light); color: var(--primary); border: none; height: 42px; padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
     .btn-header.icon-only { width: 42px; padding: 0; justify-content: center; }
 
     .section-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
@@ -74,6 +74,7 @@
       </div>
     </div>
     <div class="header-actions">
+      <button class="btn-header" onclick="openCalendarModal()"><i data-lucide="calendar"></i> History</button>
       <button class="btn-header" onclick="openBulkModal()"><i data-lucide="layers"></i> Bulk Add</button>
       <button class="btn-header icon-only" onclick="openSingleModal()"><i data-lucide="plus"></i></button>
     </div>
@@ -156,13 +157,36 @@
     </div>
   </div>
 
+  <!-- Calendar History Modal -->
+  <div class="modal-overlay" id="calendar-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 style="font-size: 1.15rem; font-weight: 700;">Completion History</h2>
+        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
+      </div>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <button class="action-icon-btn" onclick="changeMonth(-1)"><i data-lucide="chevron-left"></i> Prev</button>
+        <strong id="calendar-month-year" style="font-size: 0.95rem;"></strong>
+        <button class="action-icon-btn" onclick="changeMonth(1)">Next <i data-lucide="chevron-right"></i></button>
+      </div>
+
+      <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 0.8rem; margin-bottom: 12px;"></div>
+      
+      <div id="day-log-container" style="border-top: 1px solid var(--border-color); padding-top: 12px;">
+        <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;" id="selected-date-title">Select a day to view history</div>
+        <div id="selected-date-tasks" style="font-size: 0.82rem; color: var(--text-muted);"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase Libraries -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
   <script>
     // PASTE YOUR FIREBASE KEYS HERE:
-   const firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyAHgbJIEAEbrZ0kagyPgfo7jdXVmhhIjEY",
   authDomain: "cleaning-emdi.firebaseapp.com",
   projectId: "cleaning-emdi",
@@ -184,6 +208,8 @@
 
     let localTasks = [];
     let currentFirestoreTasks = [];
+    let completedLogs = [];
+    let currentCalDate = new Date();
 
     function calculateTaskStats(task) {
       const today = new Date(); today.setHours(0,0,0,0);
@@ -246,11 +272,19 @@
 
     async function completeTask(id) {
       const todayStr = new Date().toISOString().split('T')[0];
+      const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
+      const task = tasks.find(t => t.id === id);
+
       if (isFirebaseConfigured) {
         await db.collection('chores').doc(id).update({ lastDone: todayStr });
+        if (task) {
+          await db.collection('logs').add({ taskId: id, name: task.name, date: todayStr });
+        }
       } else {
-        const task = localTasks.find(t => t.id === id);
-        if (task) task.lastDone = todayStr;
+        if (task) {
+          task.lastDone = todayStr;
+          completedLogs.push({ taskId: id, name: task.name, date: todayStr });
+        }
         render();
       }
     }
@@ -333,12 +367,73 @@
       document.getElementById('bulk-modal').classList.add('active');
     }
 
+    function openCalendarModal() {
+      if (isFirebaseConfigured) {
+        db.collection('logs').get().then(snapshot => {
+          completedLogs = snapshot.docs.map(doc => doc.data());
+          renderCalendar();
+        });
+      } else {
+        renderCalendar();
+      }
+      document.getElementById('calendar-modal').classList.add('active');
+    }
+
+    function changeMonth(delta) {
+      currentCalDate.setMonth(currentCalDate.getMonth() + delta);
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const year = currentCalDate.getFullYear();
+      const month = currentCalDate.getMonth();
+      
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      document.getElementById('calendar-month-year').innerText = `${monthNames[month]} ${year}`;
+
+      const grid = document.getElementById('calendar-grid');
+      grid.innerHTML = ['S','M','T','W','T','F','S'].map(d => `<div style="font-weight:700; color:var(--text-muted); padding:4px;">${d}</div>`).join('');
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) {
+        grid.innerHTML += `<div></div>`;
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayLogs = completedLogs.filter(l => l.date === dateStr);
+        const hasLogs = dayLogs.length > 0;
+
+        grid.innerHTML += `
+          <div onclick="showDayLogs('${dateStr}')" style="padding: 8px 2px; border-radius: 8px; cursor: pointer; background: ${hasLogs ? 'var(--primary-light)' : 'transparent'}; font-weight: ${hasLogs ? '700' : '400'}; color: ${hasLogs ? 'var(--primary)' : 'inherit'};">
+            ${day}
+            ${hasLogs ? `<div style="font-size: 0.6rem; color: var(--primary);">● ${dayLogs.length}</div>` : ''}
+          </div>
+        `;
+      }
+      lucide.createIcons();
+    }
+
+    function showDayLogs(dateStr) {
+      const dayLogs = completedLogs.filter(l => l.date === dateStr);
+      document.getElementById('selected-date-title').innerText = `Completed on ${dateStr}:`;
+      
+      if (dayLogs.length === 0) {
+        document.getElementById('selected-date-tasks').innerText = "No chores refreshed on this day.";
+      } else {
+        document.getElementById('selected-date-tasks').innerHTML = dayLogs.map(l => `• ${l.name}`).join('<br>');
+      }
+    }
+
     function closeModals() {
       document.getElementById('single-modal').classList.remove('active');
       document.getElementById('bulk-modal').classList.remove('active');
+      document.getElementById('calendar-modal').classList.remove('active');
     }
 
-    // Load instantly from cache
+    // Load instantly from local cache on launch
     const cachedTasks = localStorage.getItem('cleanDeckCache');
     if (cachedTasks) {
       try {
@@ -347,7 +442,7 @@
       } catch (e) { console.error(e); }
     }
 
-    // Sync from Firebase
+    // Live sync from Firebase
     if (isFirebaseConfigured) {
       db.collection('chores').onSnapshot(snapshot => {
         currentFirestoreTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
