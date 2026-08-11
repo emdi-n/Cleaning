@@ -41,14 +41,15 @@
     /* User Profile, XP & Stats Dashboard */
     .user-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 14px 16px; border-radius: var(--radius); margin-bottom: 20px; box-shadow: var(--shadow); }
     .user-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .user-info { display: flex; align-items: center; gap: 8px; }
+    .user-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .level-badge { background: var(--accent-purple); color: white; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; }
+    .boost-badge { background: #f59e0b; color: white; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; display: none; }
     .user-name { font-weight: 700; font-size: 0.95rem; }
     .rank-title { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
 
-    /* Streaks & Coins Toolbar */
+    /* Streaks & Savers Toolbar */
     .stats-row { display: flex; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
-    .stat-pill { background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px 8px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; }
+    .stat-pill { background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 8px; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; }
 
     .xp-bar-container { background: #e2e8f0; height: 10px; border-radius: 10px; overflow: hidden; position: relative; margin-top: 8px; }
     .xp-bar-fill { background: linear-gradient(90deg, #3b82f6, #8b5cf6); height: 100%; width: 0%; transition: width 0.4s ease-in-out; border-radius: 10px; }
@@ -127,6 +128,7 @@
     <div class="user-card-top">
       <div class="user-info">
         <span class="level-badge" id="user-lvl-badge">Lvl 1</span>
+        <span class="boost-badge" id="user-boost-badge">⚡ 2x XP</span>
         <div>
           <div class="user-name" id="current-user-display">Alex</div>
           <div class="rank-title" id="user-rank-title">Dust Buster</div>
@@ -144,11 +146,10 @@
       <span id="xp-total-text">Total: 0 XP</span>
     </div>
 
-    <!-- Streaks, Savers & Coins Toolbar -->
+    <!-- Streaks & Savers Toolbar -->
     <div class="stats-row">
       <div class="stat-pill" style="color: #d97706;"><span id="user-streak-text">🔥 0 Day Streak</span></div>
       <div class="stat-pill" style="color: #2563eb;"><span id="user-savers-text">🛡️ 0 Savers</span></div>
-      <div class="stat-pill" style="color: #059669;"><span id="user-coins-text">🪙 0 Coins</span></div>
     </div>
   </div>
 
@@ -298,7 +299,6 @@ const firebaseConfig = {
   messagingSenderId: "750406957208",
   appId: "1:750406957208:web:056ae100e9e1febf6a38ed"
 };
-
     let db = null;
     let isFirebaseConfigured = false;
 
@@ -313,20 +313,18 @@ const firebaseConfig = {
     let currentUser = localStorage.getItem('cleanDeckUser') || 'Alex';
     let appUsers = JSON.parse(localStorage.getItem('cleanDeckUsers') || '{}');
     
-    // Ensure local active user object structure exists
     function initUserData(username) {
       if (!appUsers[username]) {
-        appUsers[username] = { xp: 0, coins: 0, streak: 0, streakSavers: 0, lastActiveDate: null };
+        appUsers[username] = { xp: 0, streak: 0, streakSavers: 0, lastActiveDate: null, xpBoostUntil: null };
       } else {
         appUsers[username].xp = appUsers[username].xp || 0;
-        appUsers[username].coins = appUsers[username].coins || 0;
         appUsers[username].streak = appUsers[username].streak || 0;
         appUsers[username].streakSavers = appUsers[username].streakSavers || 0;
+        appUsers[username].xpBoostUntil = appUsers[username].xpBoostUntil || null;
       }
     }
     initUserData(currentUser);
 
-    // Sync user stats to Firestore "users" collection
     async function syncUserData(username) {
       const userData = appUsers[username];
       if (!userData) return;
@@ -379,10 +377,7 @@ const firebaseConfig = {
       const today = new Date(todayStr);
       const diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
 
-      if (diffDays === 1) {
-        // Active consecutive day
-      } else if (diffDays > 1) {
-        // Streak lost unless saved
+      if (diffDays > 1) {
         if (userObj.streakSavers > 0) {
           userObj.streakSavers -= 1;
         } else {
@@ -391,8 +386,13 @@ const firebaseConfig = {
       }
     }
 
+    function isXpBoostActive(userObj) {
+      if (!userObj.xpBoostUntil) return false;
+      return new Date().getTime() < userObj.xpBoostUntil;
+    }
+
     function updateUserBar() {
-      const userObj = appUsers[currentUser] || { xp: 0, coins: 0, streak: 0, streakSavers: 0 };
+      const userObj = appUsers[currentUser] || { xp: 0, streak: 0, streakSavers: 0, xpBoostUntil: null };
       checkDailyStreak(userObj);
 
       const xp = userObj.xp || 0;
@@ -408,7 +408,14 @@ const firebaseConfig = {
 
       document.getElementById('user-streak-text').innerText = `🔥 ${userObj.streak || 0} Day Streak`;
       document.getElementById('user-savers-text').innerText = `🛡️ ${userObj.streakSavers || 0} Savers`;
-      document.getElementById('user-coins-text').innerText = `🪙 ${userObj.coins || 0} Coins`;
+
+      // Show / hide 2x XP boost indicator
+      const boostBadge = document.getElementById('user-boost-badge');
+      if (isXpBoostActive(userObj)) {
+        boostBadge.style.display = 'inline-block';
+      } else {
+        boostBadge.style.display = 'none';
+      }
     }
 
     function openUserModal() {
@@ -440,7 +447,6 @@ const firebaseConfig = {
       const daysOverdue = daysElapsed - interval;
       const overdueRatio = daysElapsed / Math.max(1, interval);
 
-      // Deterministically set ~15% of tasks as Chests
       let isChest = false;
       if (task.id) {
         let charCodeSum = 0;
@@ -528,6 +534,7 @@ const firebaseConfig = {
 
       const streakBonusActive = userObj.streak >= 2;
       const streakBonusXp = streakBonusActive ? 10 : 0;
+      const has2xBoost = isXpBoostActive(userObj);
 
       let title = "CHORE COMPLETE!";
       let subtext = "Revealed Reward";
@@ -539,25 +546,38 @@ const firebaseConfig = {
         const chestRoll = Math.random();
 
         if (chestRoll < 0.25) {
+          // Option 1: Streak Saver
           userObj.streakSavers = (userObj.streakSavers || 0) + 1;
           subtext = "RARE ITEM FOUND!";
           mainText = "🛡️ +1 Streak Saver";
-        } else if (chestRoll < 0.60) {
+        } else if (chestRoll < 0.45) {
+          // Option 2: 2x XP Multiplier (24 Hours)
+          const twentyFourHours = 24 * 60 * 60 * 1000;
+          userObj.xpBoostUntil = new Date().getTime() + twentyFourHours;
+          subtext = "BUFF ACTIVATED!";
+          mainText = "⚡ 2x XP Boost (24h)";
+        } else if (chestRoll < 0.65) {
+          // Option 3: Coal
           subtext = "UNLUCKY!";
           mainText = "🪨 Lump of Coal (0 XP)";
         } else {
-          const coinsWon = Math.floor(Math.random() * 46) + 5;
-          userObj.coins = (userObj.coins || 0) + coinsWon;
-          subtext = "TREASURE FOUND!";
-          mainText = `🪙 +${coinsWon} Coins`;
+          // Option 4: Bonus XP
+          let bonusXp = Math.floor(Math.random() * 51) + 50; // 50-100 XP
+          if (has2xBoost) bonusXp *= 2;
+          userObj.xp = oldXp + bonusXp;
+          subtext = has2xBoost ? "TREASURE FOUND! (2x Boost Active)" : "TREASURE FOUND!";
+          mainText = `✨ +${bonusXp} XP`;
         }
       } else {
         const rawXpDrop = Math.floor(Math.random() * 141) + 10;
-        const totalXpEarned = rawXpDrop + streakBonusXp;
+        let totalXpEarned = rawXpDrop + streakBonusXp;
+        if (has2xBoost) totalXpEarned *= 2;
         
         userObj.xp = oldXp + totalXpEarned;
         title = "🎁 LOOT DROP REVEALED!";
-        subtext = `Base Reward: +${rawXpDrop} XP`;
+        subtext = has2xBoost 
+          ? `Base Reward: +${rawXpDrop} XP (2x Boost Applied!)` 
+          : `Base Reward: +${rawXpDrop} XP`;
         mainText = `+${totalXpEarned} XP`;
       }
 
@@ -609,7 +629,13 @@ const firebaseConfig = {
     function openLeaderboardModal() {
       const container = document.getElementById('leaderboard-list');
       const sorted = Object.entries(appUsers)
-        .map(([name, data]) => ({ name, xp: data.xp || 0, coins: data.coins || 0, streak: data.streak || 0, level: calculateLevel(data.xp || 0).level }))
+        .map(([name, data]) => ({ 
+          name, 
+          xp: data.xp || 0, 
+          streak: data.streak || 0, 
+          level: calculateLevel(data.xp || 0).level,
+          hasBoost: isXpBoostActive(data)
+        }))
         .sort((a, b) => b.xp - a.xp);
 
       if (sorted.length === 0) {
@@ -618,8 +644,8 @@ const firebaseConfig = {
         container.innerHTML = sorted.map((p, index) => `
           <div class="leaderboard-item">
             <div>
-              <strong>#${index + 1} ${p.name}</strong>
-              <div style="font-size:0.75rem; color:var(--text-muted);">${getRankTitle(p.level)} • 🔥 ${p.streak}d • 🪙 ${p.coins}</div>
+              <strong>#${index + 1} ${p.name}</strong> ${p.hasBoost ? '⚡' : ''}
+              <div style="font-size:0.75rem; color:var(--text-muted);">${getRankTitle(p.level)} • 🔥 ${p.streak}d streak</div>
             </div>
             <div style="text-align:right;">
               <span class="level-badge">Lvl ${p.level}</span>
@@ -766,13 +792,11 @@ const firebaseConfig = {
     }
 
     if (isFirebaseConfigured) {
-      // Real-time Chores
       db.collection('chores').onSnapshot(snapshot => {
         currentFirestoreTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         render();
       });
 
-      // Real-time Users Sync
       db.collection('users').onSnapshot(snapshot => {
         snapshot.docs.forEach(doc => {
           appUsers[doc.id] = doc.data();
@@ -781,7 +805,6 @@ const firebaseConfig = {
         updateUserBar();
       });
 
-      // Real-time Logs Sync for Calendar
       db.collection('logs').onSnapshot(snapshot => {
         completedLogs = snapshot.docs.map(doc => doc.data());
         saveLocalData();
