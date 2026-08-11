@@ -55,15 +55,29 @@
     .xp-bar-fill { background: linear-gradient(90deg, #3b82f6, #8b5cf6); height: 100%; width: 0%; transition: width 0.4s ease-in-out; border-radius: 10px; }
     .xp-text { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
 
+    /* Room Cleanliness Scores Grid */
+    .room-scores-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 20px; scrollbar-width: none; }
+    .room-scores-container::-webkit-scrollbar { display: none; }
+    .room-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; min-width: 120px; flex-shrink: 0; box-shadow: var(--shadow); }
+    .room-card-name { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
+    .room-score-val { font-size: 1.1rem; font-weight: 800; margin-top: 2px; }
+
     .section-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
     .top-3-container { margin-bottom: 28px; }
 
     .task-card { background: var(--card-bg); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
     .task-info { flex: 1; padding-right: 12px; }
-    .task-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
-    .xp-tag { background: #fef3c7; color: #b45309; font-size: 0.7rem; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
-    .chest-tag { background: #ede9fe; color: #6d28d9; font-size: 0.7rem; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
-    .task-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .task-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    
+    /* Badges & Tags */
+    .badge-pill { font-size: 0.7rem; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
+    .xp-tag { background: #fef3c7; color: #b45309; }
+    .chest-tag { background: #ede9fe; color: #6d28d9; }
+    .room-tag { background: #e0f2fe; color: #0369a1; }
+    .time-tag { background: #f1f5f9; color: #475569; }
+    .product-tag { background: #fce7f3; color: #be185d; border: 1px solid #fbcfe8; }
+
+    .task-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
 
     .complete-btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
     .complete-btn:active { transform: scale(0.96); }
@@ -78,8 +92,8 @@
 
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
-    .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 0.95rem; }
-    .form-group textarea { height: 120px; resize: none; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 0.95rem; background: white; }
+    .form-group textarea { height: 100px; resize: none; }
 
     .submit-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1rem; cursor: pointer; }
     .action-icon-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; opacity: 0.8; padding: 2px; display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; }
@@ -153,6 +167,12 @@
     </div>
   </div>
 
+  <!-- Room Cleanliness Overview -->
+  <section>
+    <div class="section-title"><i data-lucide="home"></i> Room Cleanliness</div>
+    <div class="room-scores-container" id="room-scores-list"></div>
+  </section>
+
   <!-- Top 3 Priority -->
   <section class="top-3-container">
     <div class="section-title"><i data-lucide="zap" style="color: var(--accent-amber);"></i> Recommended Tasks</div>
@@ -222,7 +242,23 @@
         <input type="hidden" id="edit-task-id">
         <div class="form-group">
           <label>Chore Name</label>
-          <input type="text" id="task-name" placeholder="e.g. Clean Oven" required>
+          <input type="text" id="task-name" placeholder="e.g. Vacuum Rugs" required>
+        </div>
+        <div class="form-group">
+          <label>Room Tag</label>
+          <input type="text" id="task-room" placeholder="e.g. Kitchen, Living Room, Bathroom" required>
+        </div>
+        <div class="form-group">
+          <label>Time Required</label>
+          <select id="task-time">
+            <option value="short">⚡ Short (<10 mins)</option>
+            <option value="medium" selected>⏱️ Medium (10-30 mins)</option>
+            <option value="long">⌛ Long (30+ mins)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Products Needed (Comma Separated)</label>
+          <input type="text" id="task-products" placeholder="e.g. Dyson, Cloth, Multipurpose Spray">
         </div>
         <div class="form-group">
           <label>Repeat Frequency (Days)</label>
@@ -250,15 +286,27 @@
       </div>
       <form onsubmit="handleBulkSubmit(event)">
         <div class="form-group">
-          <label>List of Chores (One chore per line)</label>
-          <textarea id="bulk-names" placeholder="Vacuum Rugs&#10;Mop Floors&#10;Wipe Baseboards" required></textarea>
+          <label>List of Chores (One per line)</label>
+          <textarea id="bulk-names" placeholder="Vacuum Rugs&#10;Mop Floors&#10;Wipe Countertops" required></textarea>
         </div>
         <div class="form-group">
-          <label>Default Frequency for All (Days)</label>
+          <label>Room Tag for All</label>
+          <input type="text" id="bulk-room" placeholder="e.g. General, Kitchen" value="General" required>
+        </div>
+        <div class="form-group">
+          <label>Time Required for All</label>
+          <select id="bulk-time">
+            <option value="short">⚡ Short</option>
+            <option value="medium" selected>⏱️ Medium</option>
+            <option value="long">⌛ Long</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Default Frequency (Days)</label>
           <input type="number" id="bulk-interval" value="14" min="1" required>
         </div>
         <div class="form-group">
-          <label>Set Last Done Date for All</label>
+          <label>Last Done Date for All</label>
           <input type="date" id="bulk-lastdone" required>
         </div>
         <button type="submit" class="submit-btn">Import Chores</button>
@@ -299,6 +347,7 @@ const firebaseConfig = {
   messagingSenderId: "750406957208",
   appId: "1:750406957208:web:056ae100e9e1febf6a38ed"
 };
+
     let db = null;
     let isFirebaseConfigured = false;
 
@@ -409,7 +458,6 @@ const firebaseConfig = {
       document.getElementById('user-streak-text').innerText = `🔥 ${userObj.streak || 0} Day Streak`;
       document.getElementById('user-savers-text').innerText = `🛡️ ${userObj.streakSavers || 0} Savers`;
 
-      // Show / hide 2x XP boost indicator
       const boostBadge = document.getElementById('user-boost-badge');
       if (isXpBoostActive(userObj)) {
         boostBadge.style.display = 'inline-block';
@@ -418,25 +466,65 @@ const firebaseConfig = {
       }
     }
 
-    function openUserModal() {
-      document.getElementById('user-name-input').value = currentUser;
-      document.getElementById('user-modal').classList.add('active');
+    function calculateRoomScores(tasks) {
+      const roomStats = {};
+      const today = new Date(); today.setHours(0,0,0,0);
+
+      tasks.forEach(t => {
+        const room = t.room || "General";
+        if (!roomStats[room]) roomStats[room] = { total: 0, overdue: 0, sumOverdueRatio: 0 };
+        
+        let lastDoneDate = t.lastDone ? new Date(t.lastDone) : new Date();
+        if (isNaN(lastDoneDate.getTime())) lastDoneDate = new Date();
+        lastDoneDate.setHours(0,0,0,0);
+
+        const interval = parseInt(t.interval) || 1;
+        const daysElapsed = Math.floor((today - lastDoneDate) / (1000 * 60 * 60 * 24));
+        const overdueRatio = daysElapsed / Math.max(1, interval);
+
+        roomStats[room].total += 1;
+        if (overdueRatio > 1) roomStats[room].overdue += 1;
+        roomStats[room].sumOverdueRatio += overdueRatio;
+      });
+
+      const roomScores = {};
+      Object.keys(roomStats).forEach(room => {
+        const avgRatio = roomStats[room].sumOverdueRatio / roomStats[room].total;
+        // Cleanliness Score 0 to 100% (100% = perfectly clean, lower = dirty)
+        let score = Math.round(100 - (avgRatio - 0.5) * 50);
+        if (score > 100) score = 100;
+        if (score < 0) score = 0;
+        roomScores[room] = score;
+      });
+
+      return roomScores;
     }
 
-    async function handleUserSubmit(e) {
-      e.preventDefault();
-      const newName = document.getElementById('user-name-input').value.trim();
-      if (newName) {
-        currentUser = newName;
-        localStorage.setItem('cleanDeckUser', currentUser);
-        initUserData(currentUser);
-        await syncUserData(currentUser);
-        updateUserBar();
+    function renderRoomScores(roomScores) {
+      const container = document.getElementById('room-scores-list');
+      const rooms = Object.keys(roomScores);
+
+      if (rooms.length === 0) {
+        container.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted);">No room data available.</div>`;
+        return;
       }
-      closeModals();
+
+      container.innerHTML = rooms.map(room => {
+        const score = roomScores[room];
+        let color = '#10b981'; // Green
+        if (score < 70) color = '#f59e0b'; // Amber
+        if (score < 40) color = '#ef4444'; // Red
+
+        return `
+          <div class="room-card">
+            <div class="room-card-name">${room}</div>
+            <div class="room-score-val" style="color: ${color};">${score}%</div>
+          </div>
+        `;
+      }).join('');
     }
 
-    function calculateTaskStats(task) {
+    function calculateTaskStats(task, roomScores) {
       const today = new Date(); today.setHours(0,0,0,0);
       let lastDoneDate = task.lastDone ? new Date(task.lastDone) : new Date();
       if (isNaN(lastDoneDate.getTime())) lastDoneDate = new Date();
@@ -447,31 +535,41 @@ const firebaseConfig = {
       const daysOverdue = daysElapsed - interval;
       const overdueRatio = daysElapsed / Math.max(1, interval);
 
+      const room = task.room || "General";
+      const roomCleanliness = roomScores[room] !== undefined ? roomScores[room] : 100;
+      
+      // Low cleanliness score (dirty room) increases task urgency multiplier
+      const roomDirtinessWeight = (100 - roomCleanliness) / 100;
+      const finalPriorityScore = overdueRatio + (roomDirtinessWeight * 1.5) + (task.isHighPriority ? 2.0 : 0);
+
+      // Chest probability based on time tag
+      const timeTag = task.timeTag || "medium";
+      let chestChance = 0.20;
+      if (timeTag === "short") chestChance = 0.10;
+      if (timeTag === "long") chestChance = 0.35;
+
       let isChest = false;
       if (task.id) {
         let charCodeSum = 0;
         for (let i = 0; i < task.id.length; i++) charCodeSum += task.id.charCodeAt(i);
-        isChest = (charCodeSum % 7 === 0);
+        isChest = (charCodeSum % Math.round(1 / chestChance)) === 0;
       }
 
-      return { ...task, interval, daysElapsed, daysOverdue, overdueRatio, isChest };
+      return { ...task, interval, daysElapsed, daysOverdue, overdueRatio, finalPriorityScore, roomCleanliness, isChest, timeTag };
     }
 
-    function sortTasks(tasks) {
+    function sortTasks(tasks, roomScores) {
       return tasks
-        .map(calculateTaskStats)
-        .sort((a, b) => {
-          const aOver = a.isHighPriority && a.daysOverdue > 0;
-          const bOver = b.isHighPriority && b.daysOverdue > 0;
-          if (aOver && !bOver) return -1;
-          if (!aOver && bOver) return 1;
-          return b.overdueRatio - a.overdueRatio;
-        });
+        .map(t => calculateTaskStats(t, roomScores))
+        .sort((a, b) => b.finalPriorityScore - a.finalPriorityScore);
     }
 
     function render() {
       const tasksToRender = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
-      const sorted = sortTasks(tasksToRender);
+      const roomScores = calculateRoomScores(tasksToRender);
+      renderRoomScores(roomScores);
+
+      const sorted = sortTasks(tasksToRender, roomScores);
       renderTaskList('top-3-list', sorted.slice(0, 3));
       renderTaskList('all-tasks-list', sorted.slice(3));
       updateUserBar();
@@ -487,8 +585,13 @@ const firebaseConfig = {
 
       container.innerHTML = tasks.map(t => {
         const badgeTag = t.isChest 
-          ? `<span class="chest-tag">🧰 Mystery Chest</span>` 
-          : `<span class="xp-tag">🎁 XP</span>`;
+          ? `<span class="badge-pill chest-tag">🧰 Mystery Chest</span>` 
+          : `<span class="badge-pill xp-tag">🎁 XP</span>`;
+
+        const timeLabel = t.timeTag === 'short' ? '⚡ Short' : (t.timeTag === 'long' ? '⌛ Long' : '⏱️ Med');
+
+        const productsList = (t.products || '').split(',').map(p => p.trim()).filter(p => p.length > 0);
+        const productBadges = productsList.map(p => `<span class="badge-pill product-tag">🧹 ${p}</span>`).join(' ');
 
         return `
           <div class="task-card">
@@ -496,8 +599,11 @@ const firebaseConfig = {
               <div class="task-title">
                 ${t.isHighPriority ? '<span style="color: #f59e0b;">★</span>' : ''}
                 ${t.name}
+                <span class="badge-pill room-tag">🏠 ${t.room || 'General'}</span>
+                <span class="badge-pill time-tag">${timeLabel}</span>
                 ${badgeTag}
               </div>
+              ${productBadges ? `<div style="margin-bottom: 4px; display:flex; gap:4px; flex-wrap:wrap;">${productBadges}</div>` : ''}
               <div class="task-meta">
                 <button class="action-icon-btn" onclick="openEditModal('${t.id}')"><i data-lucide="pencil" style="width:14px;"></i> Edit</button>
                 <button class="action-icon-btn" onclick="deleteTask('${t.id}')"><i data-lucide="trash-2" style="width:14px;"></i> Delete</button>
@@ -515,7 +621,8 @@ const firebaseConfig = {
       const task = tasks.find(t => t.id === id);
       if (!task) return;
 
-      const stats = calculateTaskStats(task);
+      const roomScores = calculateRoomScores(tasks);
+      const stats = calculateTaskStats(task, roomScores);
       const userObj = appUsers[currentUser];
 
       // Update Daily Streak
@@ -546,30 +653,31 @@ const firebaseConfig = {
         const chestRoll = Math.random();
 
         if (chestRoll < 0.25) {
-          // Option 1: Streak Saver
           userObj.streakSavers = (userObj.streakSavers || 0) + 1;
           subtext = "RARE ITEM FOUND!";
           mainText = "🛡️ +1 Streak Saver";
         } else if (chestRoll < 0.45) {
-          // Option 2: 2x XP Multiplier (24 Hours)
           const twentyFourHours = 24 * 60 * 60 * 1000;
           userObj.xpBoostUntil = new Date().getTime() + twentyFourHours;
           subtext = "BUFF ACTIVATED!";
           mainText = "⚡ 2x XP Boost (24h)";
         } else if (chestRoll < 0.65) {
-          // Option 3: Coal
           subtext = "UNLUCKY!";
           mainText = "🪨 Lump of Coal (0 XP)";
         } else {
-          // Option 4: Bonus XP
-          let bonusXp = Math.floor(Math.random() * 51) + 50; // 50-100 XP
+          let bonusXp = Math.floor(Math.random() * 51) + 50;
           if (has2xBoost) bonusXp *= 2;
           userObj.xp = oldXp + bonusXp;
           subtext = has2xBoost ? "TREASURE FOUND! (2x Boost Active)" : "TREASURE FOUND!";
           mainText = `✨ +${bonusXp} XP`;
         }
       } else {
-        const rawXpDrop = Math.floor(Math.random() * 141) + 10;
+        // XP scaling based on task time length
+        let rawMin = 10, rawMax = 30;
+        if (stats.timeTag === "medium") { rawMin = 30; rawMax = 70; }
+        if (stats.timeTag === "long") { rawMin = 70; rawMax = 120; }
+
+        const rawXpDrop = Math.floor(Math.random() * (rawMax - rawMin + 1)) + rawMin;
         let totalXpEarned = rawXpDrop + streakBonusXp;
         if (has2xBoost) totalXpEarned *= 2;
         
@@ -661,23 +769,28 @@ const firebaseConfig = {
       e.preventDefault();
       const id = document.getElementById('edit-task-id').value;
       const name = document.getElementById('task-name').value;
+      const room = document.getElementById('task-room').value || 'General';
+      const timeTag = document.getElementById('task-time').value;
+      const products = document.getElementById('task-products').value;
       const interval = parseInt(document.getElementById('task-interval').value);
       const lastDone = document.getElementById('task-lastdone').value;
       const isHighPriority = document.getElementById('task-priority').checked;
 
+      const payload = { name, room, timeTag, products, interval, lastDone, isHighPriority };
+
       if (id) {
         if (isFirebaseConfigured) { 
-          await db.collection('chores').doc(id).update({ name, interval, lastDone, isHighPriority }); 
+          await db.collection('chores').doc(id).update(payload); 
         } else { 
           const t = localTasks.find(x => x.id === id); 
-          if (t) Object.assign(t, { name, interval, lastDone, isHighPriority }); 
+          if (t) Object.assign(t, payload); 
           saveLocalData(); render(); 
         }
       } else {
         if (isFirebaseConfigured) { 
-          await db.collection('chores').add({ name, interval, lastDone, isHighPriority }); 
+          await db.collection('chores').add(payload); 
         } else { 
-          localTasks.push({ id: Date.now().toString(), name, interval, lastDone, isHighPriority }); 
+          localTasks.push({ id: Date.now().toString(), ...payload }); 
           saveLocalData(); render(); 
         }
       }
@@ -687,6 +800,8 @@ const firebaseConfig = {
     async function handleBulkSubmit(e) {
       e.preventDefault();
       const rawNames = document.getElementById('bulk-names').value;
+      const room = document.getElementById('bulk-room').value || 'General';
+      const timeTag = document.getElementById('bulk-time').value;
       const interval = parseInt(document.getElementById('bulk-interval').value);
       const lastDone = document.getElementById('bulk-lastdone').value;
       const names = rawNames.split('\n').map(n => n.trim()).filter(n => n.length > 0);
@@ -695,12 +810,12 @@ const firebaseConfig = {
         const batch = db.batch();
         names.forEach(name => {
           const docRef = db.collection('chores').doc();
-          batch.set(docRef, { name, interval, lastDone, isHighPriority: false });
+          batch.set(docRef, { name, room, timeTag, products: '', interval, lastDone, isHighPriority: false });
         });
         await batch.commit();
       } else {
         names.forEach(name => {
-          localTasks.push({ id: Math.random().toString(), name, interval, lastDone, isHighPriority: false });
+          localTasks.push({ id: Math.random().toString(), name, room, timeTag, products: '', interval, lastDone, isHighPriority: false });
         });
         saveLocalData(); render();
       }
@@ -719,6 +834,9 @@ const firebaseConfig = {
       if (!t) return;
       document.getElementById('edit-task-id').value = t.id;
       document.getElementById('task-name').value = t.name;
+      document.getElementById('task-room').value = t.room || 'General';
+      document.getElementById('task-time').value = t.timeTag || 'medium';
+      document.getElementById('task-products').value = t.products || '';
       document.getElementById('task-interval').value = t.interval;
       document.getElementById('task-lastdone').value = t.lastDone;
       document.getElementById('task-priority').checked = !!t.isHighPriority;
@@ -785,6 +903,24 @@ const firebaseConfig = {
       } else {
         document.getElementById('selected-date-tasks').innerHTML = dayLogs.map(l => `• ${l.name} <span style="color:var(--primary); font-weight:600;">(by ${l.completedBy})</span>`).join('<br>');
       }
+    }
+
+    function openUserModal() {
+      document.getElementById('user-name-input').value = currentUser;
+      document.getElementById('user-modal').classList.add('active');
+    }
+
+    async function handleUserSubmit(e) {
+      e.preventDefault();
+      const newName = document.getElementById('user-name-input').value.trim();
+      if (newName) {
+        currentUser = newName;
+        localStorage.setItem('cleanDeckUser', currentUser);
+        initUserData(currentUser);
+        await syncUserData(currentUser);
+        updateUserBar();
+      }
+      closeModals();
     }
 
     function closeModals() {
