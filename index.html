@@ -18,6 +18,7 @@
       --primary: #2563eb;
       --primary-light: #eff6ff;
       --accent-amber: #f59e0b;
+      --accent-purple: #8b5cf6;
       --border-color: #e2e8f0;
       --radius: 16px;
       --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
@@ -36,21 +37,33 @@
     .btn-header { background: var(--primary-light); color: var(--primary); border: none; height: 42px; padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
     .btn-header.icon-only { width: 42px; padding: 0; justify-content: center; }
 
-    .user-bar { background: var(--card-bg); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.85rem; font-weight: 600; }
-    .user-badge { background: var(--primary-light); color: var(--primary); padding: 4px 10px; border-radius: 20px; font-weight: 700; }
+    /* User Profile & XP Bar */
+    .user-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 14px 16px; border-radius: var(--radius); margin-bottom: 20px; box-shadow: var(--shadow); }
+    .user-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .user-info { display: flex; align-items: center; gap: 8px; }
+    .level-badge { background: var(--accent-purple); color: white; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; }
+    .user-name { font-weight: 700; font-size: 0.95rem; }
+    .rank-title { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+
+    .xp-bar-container { background: #e2e8f0; height: 10px; border-radius: 10px; overflow: hidden; position: relative; margin-top: 6px; }
+    .xp-bar-fill { background: linear-gradient(90deg, #3b82f6, #8b5cf6); height: 100%; width: 0%; transition: width 0.4s ease-in-out; border-radius: 10px; }
+    .xp-text { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
 
     .section-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
     .top-3-container { margin-bottom: 28px; }
 
     .task-card { background: var(--card-bg); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
     .task-info { flex: 1; padding-right: 12px; }
-    .task-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main); }
+    .task-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
+    .xp-tag { background: #fef3c7; color: #b45309; font-size: 0.7rem; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
     .task-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 
     .complete-btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .complete-btn:active { transform: scale(0.96); }
 
     .toggle-all-btn { width: 100%; background: transparent; border: 1px dashed var(--border-color); padding: 12px; border-radius: 12px; color: var(--text-muted); font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
 
+    /* Modals */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
     .modal-overlay.active { display: flex; }
     .modal { background: white; width: 100%; max-width: 500px; border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; }
@@ -64,6 +77,25 @@
     .submit-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1rem; cursor: pointer; }
     .action-icon-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; opacity: 0.8; padding: 2px; display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; }
     .action-icon-btn:hover { opacity: 1; color: var(--primary); }
+
+    /* Reward / Loot Popup Overlay */
+    .reward-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 2000; }
+    .reward-overlay.active { display: flex; }
+    .reward-card { background: white; padding: 28px 24px; border-radius: 24px; text-align: center; width: 85%; max-width: 360px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    
+    @keyframes popIn {
+      0% { transform: scale(0.7); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .reward-title { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+    .reward-mult { font-size: 1.1rem; font-weight: 800; color: var(--accent-purple); margin-bottom: 8px; }
+    .reward-xp { font-size: 2.5rem; font-weight: 800; color: var(--primary); margin-bottom: 12px; }
+    .level-up-banner { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; border-radius: 10px; padding: 8px 12px; font-size: 0.85rem; font-weight: 700; margin-bottom: 16px; display: none; }
+
+    /* Leaderboard List */
+    .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color); }
+    .leaderboard-item:last-child { border-bottom: none; }
   </style>
 </head>
 <body>
@@ -77,16 +109,32 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn-header" onclick="openCalendarModal()"><i data-lucide="calendar"></i> History</button>
-      <button class="btn-header" onclick="openBulkModal()"><i data-lucide="layers"></i> Bulk Add</button>
+      <button class="btn-header" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i> Ranks</button>
+      <button class="btn-header icon-only" onclick="openCalendarModal()"><i data-lucide="calendar"></i></button>
+      <button class="btn-header icon-only" onclick="openBulkModal()"><i data-lucide="layers"></i></button>
       <button class="btn-header icon-only" onclick="openSingleModal()"><i data-lucide="plus"></i></button>
     </div>
   </header>
 
-  <!-- User Identifier Bar -->
-  <div class="user-bar">
-    <div>Logged in as: <span class="user-badge" id="current-user-display">Guest</span></div>
-    <button class="action-icon-btn" onclick="openUserModal()"><i data-lucide="user"></i> Switch User</button>
+  <!-- Active User & XP Progress Bar -->
+  <div class="user-card">
+    <div class="user-card-top">
+      <div class="user-info">
+        <span class="level-badge" id="user-lvl-badge">Lvl 1</span>
+        <div>
+          <div class="user-name" id="current-user-display">Guest</div>
+          <div class="rank-title" id="user-rank-title">Novice Cleaner</div>
+        </div>
+      </div>
+      <button class="action-icon-btn" onclick="openUserModal()"><i data-lucide="user"></i> Switch</button>
+    </div>
+    <div class="xp-bar-container">
+      <div class="xp-bar-fill" id="xp-bar-fill"></div>
+    </div>
+    <div class="xp-text">
+      <span id="xp-current-text">0 / 100 XP</span>
+      <span id="xp-total-text">Total: 0 XP</span>
+    </div>
   </div>
 
   <!-- Top 3 Priority -->
@@ -107,6 +155,28 @@
     </div>
   </section>
 
+  <!-- Variable Reward / XP Drop Popup -->
+  <div class="reward-overlay" id="reward-modal">
+    <div class="reward-card">
+      <div class="reward-title" id="reward-type-title">CHORE COMPLETE!</div>
+      <div class="reward-mult" id="reward-mult-text">⚡ 1.0x Base Payout</div>
+      <div class="reward-xp" id="reward-xp-text">+25 XP</div>
+      <div class="level-up-banner" id="level-up-banner">🎉 LEVEL UP! You reached <span id="new-lvl-text">Lvl 2</span>!</div>
+      <button class="submit-btn" onclick="closeRewardModal()">Claim XP</button>
+    </div>
+  </div>
+
+  <!-- Leaderboard Modal -->
+  <div class="modal-overlay" id="leaderboard-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 style="font-size: 1.15rem; font-weight: 700;">Household Leaderboard</h2>
+        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
+      </div>
+      <div id="leaderboard-list"></div>
+    </div>
+  </div>
+
   <!-- Switch User Modal -->
   <div class="modal-overlay" id="user-modal">
     <div class="modal">
@@ -119,7 +189,7 @@
           <label>Your Name</label>
           <input type="text" id="user-name-input" placeholder="e.g. Alex, Sam, Jordan" required>
         </div>
-        <button type="submit" class="submit-btn">Set Name</button>
+        <button type="submit" class="submit-btn">Set Profile</button>
       </form>
     </div>
   </div>
@@ -147,9 +217,9 @@
         </div>
         <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
           <input type="checkbox" id="task-priority" style="width: auto;">
-          <label for="task-priority" style="margin-bottom: 0;">★ High Priority (Jump to top when overdue)</label>
+          <label for="task-priority" style="margin-bottom: 0;">★ High Priority (Extra overdue XP)</label>
         </div>
-        <button type="submit" class="submit-btn" id="single-submit-btn">Save Chore</button>
+        <button type="submit" class="submit-btn">Save Chore</button>
       </form>
     </div>
   </div>
@@ -164,7 +234,7 @@
       <form onsubmit="handleBulkSubmit(event)">
         <div class="form-group">
           <label>List of Chores (One chore per line)</label>
-          <textarea id="bulk-names" placeholder="Vacuum Rugs&#10;Mop Floors&#10;Wipe Baseboards&#10;Clean Windows" required></textarea>
+          <textarea id="bulk-names" placeholder="Vacuum Rugs&#10;Mop Floors&#10;Wipe Baseboards" required></textarea>
         </div>
         <div class="form-group">
           <label>Default Frequency for All (Days)</label>
@@ -174,11 +244,7 @@
           <label>Set Last Done Date for All</label>
           <input type="date" id="bulk-lastdone" required>
         </div>
-        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" id="bulk-priority" style="width: auto;">
-          <label for="bulk-priority" style="margin-bottom: 0;">★ Mark all as High Priority</label>
-        </div>
-        <button type="submit" class="submit-btn">Import All Chores</button>
+        <button type="submit" class="submit-btn">Import Chores</button>
       </form>
     </div>
   </div>
@@ -190,15 +256,12 @@
         <h2 style="font-size: 1.15rem; font-weight: 700;">Completion History</h2>
         <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
       </div>
-      
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <button class="action-icon-btn" onclick="changeMonth(-1)"><i data-lucide="chevron-left"></i> Prev</button>
         <strong id="calendar-month-year" style="font-size: 0.95rem;"></strong>
         <button class="action-icon-btn" onclick="changeMonth(1)">Next <i data-lucide="chevron-right"></i></button>
       </div>
-
       <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 0.8rem; margin-bottom: 12px;"></div>
-      
       <div id="day-log-container" style="border-top: 1px solid var(--border-color); padding-top: 12px;">
         <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;" id="selected-date-title">Select a day to view history</div>
         <div id="selected-date-tasks" style="font-size: 0.82rem; color: var(--text-muted);"></div>
@@ -211,7 +274,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
   <script>
-    // PASTE YOUR FIREBASE KEYS HERE:
 const firebaseConfig = {
   apiKey: "AIzaSyAHgbJIEAEbrZ0kagyPgfo7jdXVmhhIjEY",
   authDomain: "cleaning-emdi.firebaseapp.com",
@@ -224,7 +286,7 @@ const firebaseConfig = {
     let db = null;
     let isFirebaseConfigured = false;
 
-    if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+    if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
       try {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
@@ -232,16 +294,58 @@ const firebaseConfig = {
       } catch (e) { console.error("Firebase failed:", e); }
     }
 
-    let currentUser = localStorage.getItem('cleanDeckUser') || 'Someone';
-    document.getElementById('current-user-display').innerText = currentUser;
+    let currentUser = localStorage.getItem('cleanDeckUser') || 'Alex';
+    let userProfiles = JSON.parse(localStorage.getItem('cleanDeckProfiles') || '{}');
+    if (!userProfiles[currentUser]) { userProfiles[currentUser] = { xp: 0 }; }
 
-    let localTasks = [];
+    let localTasks = JSON.parse(localStorage.getItem('cleanDeckLocalTasks') || '[]');
+    let completedLogs = JSON.parse(localStorage.getItem('cleanDeckLogs') || '[]');
     let currentFirestoreTasks = [];
-    let completedLogs = [];
     let currentCalDate = new Date();
 
+    const RANKS = [
+      { minLvl: 1, title: "Dust Buster" },
+      { minLvl: 3, title: "Soap Samurai" },
+      { minLvl: 5, title: "Scrub Master" },
+      { minLvl: 10, title: "Sanitation Overlord" }
+    ];
+
+    function saveLocalData() {
+      localStorage.setItem('cleanDeckLocalTasks', JSON.stringify(localTasks));
+      localStorage.setItem('cleanDeckLogs', JSON.stringify(completedLogs));
+      localStorage.setItem('cleanDeckProfiles', JSON.stringify(userProfiles));
+    }
+
+    function calculateLevel(totalXp) {
+      const xpPerLevel = 100;
+      const level = Math.floor(totalXp / xpPerLevel) + 1;
+      const currentLevelXp = totalXp % xpPerLevel;
+      return { level, currentLevelXp, xpPerLevel };
+    }
+
+    function getRankTitle(level) {
+      let title = RANKS[0].title;
+      for (let r of RANKS) {
+        if (level >= r.minLvl) title = r.title;
+      }
+      return title;
+    }
+
+    function updateProfileBar() {
+      const xp = userProfiles[currentUser]?.xp || 0;
+      const { level, currentLevelXp, xpPerLevel } = calculateLevel(xp);
+      const pct = Math.min(100, Math.floor((currentLevelXp / xpPerLevel) * 100));
+
+      document.getElementById('current-user-display').innerText = currentUser;
+      document.getElementById('user-lvl-badge').innerText = `Lvl ${level}`;
+      document.getElementById('user-rank-title').innerText = getRankTitle(level);
+      document.getElementById('xp-bar-fill').style.width = `${pct}%`;
+      document.getElementById('xp-current-text').innerText = `${currentLevelXp} / ${xpPerLevel} XP`;
+      document.getElementById('xp-total-text').innerText = `Total: ${xp} XP`;
+    }
+
     function openUserModal() {
-      document.getElementById('user-name-input').value = currentUser === 'Someone' ? '' : currentUser;
+      document.getElementById('user-name-input').value = currentUser;
       document.getElementById('user-modal').classList.add('active');
     }
 
@@ -251,33 +355,40 @@ const firebaseConfig = {
       if (newName) {
         currentUser = newName;
         localStorage.setItem('cleanDeckUser', currentUser);
-        document.getElementById('current-user-display').innerText = currentUser;
+        if (!userProfiles[currentUser]) { userProfiles[currentUser] = { xp: 0 }; }
+        saveLocalData();
+        updateProfileBar();
       }
       closeModals();
     }
 
+    function calculateBaseXp(task) {
+      const base = 20 + (parseInt(task.interval) || 1) * 2;
+      return task.isHighPriority ? Math.floor(base * 1.3) : base;
+    }
+
     function calculateTaskStats(task) {
       const today = new Date(); today.setHours(0,0,0,0);
-      const lastDone = new Date(task.lastDone); lastDone.setHours(0,0,0,0);
+      let lastDoneDate = task.lastDone ? new Date(task.lastDone) : new Date();
+      if (isNaN(lastDoneDate.getTime())) lastDoneDate = new Date();
+      lastDoneDate.setHours(0,0,0,0);
       
-      const daysElapsed = Math.floor((today - lastDone) / (1000 * 60 * 60 * 24));
-      const daysOverdue = daysElapsed - task.interval;
-      const overdueRatio = daysElapsed / Math.max(1, task.interval);
-      const isHighPriority = !!task.isHighPriority;
+      const interval = parseInt(task.interval) || 1;
+      const daysElapsed = Math.floor((today - lastDoneDate) / (1000 * 60 * 60 * 24));
+      const daysOverdue = daysElapsed - interval;
+      const overdueRatio = daysElapsed / Math.max(1, interval);
 
-      return { ...task, daysElapsed, daysOverdue, overdueRatio, isHighPriority };
+      return { ...task, interval, daysElapsed, daysOverdue, overdueRatio, baseXp: calculateBaseXp(task) };
     }
 
     function sortTasks(tasks) {
       return tasks
         .map(calculateTaskStats)
         .sort((a, b) => {
-          const aIsHighOverdue = a.isHighPriority && a.daysOverdue > 0;
-          const bIsHighOverdue = b.isHighPriority && b.daysOverdue > 0;
-
-          if (aIsHighOverdue && !bIsHighOverdue) return -1;
-          if (!aIsHighOverdue && bIsHighOverdue) return 1;
-
+          const aOver = a.isHighPriority && a.daysOverdue > 0;
+          const bOver = b.isHighPriority && b.daysOverdue > 0;
+          if (aOver && !bOver) return -1;
+          if (!aOver && bOver) return 1;
           return b.overdueRatio - a.overdueRatio;
         });
     }
@@ -287,79 +398,124 @@ const firebaseConfig = {
       const sorted = sortTasks(tasksToRender);
       renderTaskList('top-3-list', sorted.slice(0, 3));
       renderTaskList('all-tasks-list', sorted.slice(3));
+      updateProfileBar();
       lucide.createIcons();
     }
 
     function renderTaskList(containerId, tasks) {
       const container = document.getElementById(containerId);
-      if (tasks.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:20px; color:#64748b; font-size:0.9rem;">No chores here! Tap <strong>Bulk Add</strong> to paste your tasks.</div>`;
+      if (!tasks || tasks.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:20px; color:#64748b; font-size:0.9rem;">No chores here! Tap <strong>+</strong> to add.</div>`;
         return;
       }
 
-      container.innerHTML = tasks.map(t => {
-        const priorityStar = t.isHighPriority ? `<span style="color: #f59e0b; margin-right: 4px;">★</span>` : '';
-
-        return `
-          <div class="task-card">
-            <div class="task-info">
-              <div class="task-title">${priorityStar}${t.name}</div>
-              <div class="task-meta">
-                <button class="action-icon-btn" onclick="openEditModal('${t.id}')"><i data-lucide="pencil" style="width:14px;"></i> Edit Details</button>
-                <button class="action-icon-btn" onclick="deleteTask('${t.id}')"><i data-lucide="trash-2" style="width:14px;"></i> Delete</button>
-              </div>
+      container.innerHTML = tasks.map(t => `
+        <div class="task-card">
+          <div class="task-info">
+            <div class="task-title">
+              ${t.isHighPriority ? '<span style="color: #f59e0b;">★</span>' : ''}
+              ${t.name}
+              <span class="xp-tag">+${t.baseXp} XP</span>
             </div>
-            <button class="complete-btn" onclick="completeTask('${t.id}')"><i data-lucide="check"></i> Done</button>
+            <div class="task-meta">
+              <button class="action-icon-btn" onclick="openEditModal('${t.id}')"><i data-lucide="pencil" style="width:14px;"></i> Edit</button>
+              <button class="action-icon-btn" onclick="deleteTask('${t.id}')"><i data-lucide="trash-2" style="width:14px;"></i> Delete</button>
+            </div>
           </div>
-        `;
-      }).join('');
-    }
-
-    async function backfillExistingTaskLogs(tasks) {
-      if (!isFirebaseConfigured || tasks.length === 0) return;
-      
-      const snapshot = await db.collection('logs').get();
-      const existingLogs = snapshot.docs.map(doc => doc.data());
-      const batch = db.batch();
-      let hasNewLogs = false;
-
-      tasks.forEach(task => {
-        const hasLog = existingLogs.some(log => log.taskId === task.id && log.date === task.lastDone);
-        if (!hasLog && task.lastDone) {
-          const logRef = db.collection('logs').doc();
-          batch.set(logRef, { taskId: task.id, name: task.name, date: task.lastDone, completedBy: 'Initial Setup' });
-          hasNewLogs = true;
-        }
-      });
-
-      if (hasNewLogs) {
-        await batch.commit();
-      }
+          <button class="complete-btn" onclick="completeTask('${t.id}')"><i data-lucide="check"></i> Done</button>
+        </div>
+      `).join('');
     }
 
     async function completeTask(id) {
-      if (currentUser === 'Someone') {
-        openUserModal();
-        return;
-      }
-
       const todayStr = new Date().toISOString().split('T')[0];
       const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
       const task = tasks.find(t => t.id === id);
+      if (!task) return;
+
+      const stats = calculateTaskStats(task);
+      const baseXp = stats.baseXp;
+
+      // Variable Reward Roll (Dopamine Trigger)
+      const roll = Math.random();
+      let multiplier = 1.0;
+      let title = "CHORE COMPLETE!";
+      let multText = "⚡ 1.0x Base Payout";
+
+      if (roll > 0.85) {
+        multiplier = 2.5;
+        title = "🔥 CRITICAL HIT!";
+        multText = "⚡ 2.5x HUGE LOOT MULTIPLIER!";
+      } else if (roll > 0.55) {
+        multiplier = 1.5;
+        title = "✨ GREAT DROP!";
+        multText = "⚡ 1.5x Bonus XP!";
+      }
+
+      const finalXp = Math.floor(baseXp * multiplier);
+      const oldXp = userProfiles[currentUser]?.xp || 0;
+      const newXp = oldXp + finalXp;
+      
+      const oldLvl = calculateLevel(oldXp).level;
+      const newLvl = calculateLevel(newXp).level;
+
+      userProfiles[currentUser] = { xp: newXp };
 
       if (isFirebaseConfigured) {
         await db.collection('chores').doc(id).update({ lastDone: todayStr, lastDoneBy: currentUser });
-        if (task) {
-          await db.collection('logs').add({ taskId: id, name: task.name, date: todayStr, completedBy: currentUser });
-        }
+        await db.collection('logs').add({ taskId: id, name: task.name, date: todayStr, completedBy: currentUser, xpEarned: finalXp });
       } else {
-        if (task) {
-          task.lastDone = todayStr;
-          task.lastDoneBy = currentUser;
-          completedLogs.push({ taskId: id, name: task.name, date: todayStr, completedBy: currentUser });
-        }
+        task.lastDone = todayStr;
+        task.lastDoneBy = currentUser;
+        completedLogs.push({ taskId: id, name: task.name, date: todayStr, completedBy: currentUser, xpEarned: finalXp });
+        saveLocalData();
         render();
       }
+
+      // Trigger Reward Modal
+      document.getElementById('reward-type-title').innerText = title;
+      document.getElementById('reward-mult-text').innerText = multText;
+      document.getElementById('reward-xp-text').innerText = `+${finalXp} XP`;
+      
+      const lvlBanner = document.getElementById('level-up-banner');
+      if (newLvl > oldLvl) {
+        document.getElementById('new-lvl-text').innerText = `Lvl ${newLvl}`;
+        lvlBanner.style.display = 'block';
+      } else {
+        lvlBanner.style.display = 'none';
+      }
+
+      document.getElementById('reward-modal').classList.add('active');
+    }
+
+    function closeRewardModal() {
+      document.getElementById('reward-modal').classList.remove('active');
+      updateProfileBar();
+    }
+
+    function openLeaderboardModal() {
+      const container = document.getElementById('leaderboard-list');
+      const sorted = Object.entries(userProfiles)
+        .map(([name, data]) => ({ name, xp: data.xp || 0, level: calculateLevel(data.xp || 0).level }))
+        .sort((a, b) => b.xp - a.xp);
+
+      if (sorted.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:20px; color:#64748b;">No player data yet!</div>`;
+      } else {
+        container.innerHTML = sorted.map((p, index) => `
+          <div class="leaderboard-item">
+            <div>
+              <strong>#${index + 1} ${p.name}</strong>
+              <div style="font-size:0.75rem; color:var(--text-muted);">${getRankTitle(p.level)}</div>
+            </div>
+            <div style="text-align:right;">
+              <span class="level-badge">Lvl ${p.level}</span>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700; margin-top:2px;">${p.xp} Total XP</div>
+            </div>
+          </div>
+        `).join('');
+      }
+      document.getElementById('leaderboard-modal').classList.add('active');
     }
 
     async function handleSingleSubmit(e) {
@@ -376,17 +532,14 @@ const firebaseConfig = {
         } else { 
           const t = localTasks.find(x => x.id === id); 
           if (t) Object.assign(t, { name, interval, lastDone, isHighPriority }); 
-          render(); 
+          saveLocalData(); render(); 
         }
       } else {
         if (isFirebaseConfigured) { 
-          const newDoc = await db.collection('chores').add({ name, interval, lastDone, isHighPriority }); 
-          await db.collection('logs').add({ taskId: newDoc.id, name, date: lastDone, completedBy: currentUser });
+          await db.collection('chores').add({ name, interval, lastDone, isHighPriority }); 
         } else { 
-          const newId = Date.now().toString();
-          localTasks.push({ id: newId, name, interval, lastDone, isHighPriority }); 
-          completedLogs.push({ taskId: newId, name, date: lastDone, completedBy: currentUser });
-          render(); 
+          localTasks.push({ id: Date.now().toString(), name, interval, lastDone, isHighPriority }); 
+          saveLocalData(); render(); 
         }
       }
       closeModals();
@@ -397,27 +550,20 @@ const firebaseConfig = {
       const rawNames = document.getElementById('bulk-names').value;
       const interval = parseInt(document.getElementById('bulk-interval').value);
       const lastDone = document.getElementById('bulk-lastdone').value;
-      const isHighPriority = document.getElementById('bulk-priority').checked;
-
       const names = rawNames.split('\n').map(n => n.trim()).filter(n => n.length > 0);
 
       if (isFirebaseConfigured) {
         const batch = db.batch();
         names.forEach(name => {
           const docRef = db.collection('chores').doc();
-          const logRef = db.collection('logs').doc();
-          
-          batch.set(docRef, { name, interval, lastDone, isHighPriority });
-          batch.set(logRef, { taskId: docRef.id, name, date: lastDone, completedBy: currentUser });
+          batch.set(docRef, { name, interval, lastDone, isHighPriority: false });
         });
         await batch.commit();
       } else {
         names.forEach(name => {
-          const newId = Math.random().toString();
-          localTasks.push({ id: newId, name, interval, lastDone, isHighPriority });
-          completedLogs.push({ taskId: newId, name, date: lastDone, completedBy: currentUser });
+          localTasks.push({ id: Math.random().toString(), name, interval, lastDone, isHighPriority: false });
         });
-        render();
+        saveLocalData(); render();
       }
       closeModals();
     }
@@ -425,20 +571,18 @@ const firebaseConfig = {
     async function deleteTask(id) {
       if (!confirm("Delete this chore?")) return;
       if (isFirebaseConfigured) { await db.collection('chores').doc(id).delete(); }
-      else { localTasks = localTasks.filter(t => t.id !== id); render(); }
+      else { localTasks = localTasks.filter(t => t.id !== id); saveLocalData(); render(); }
     }
 
     function openEditModal(id) {
       const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
       const t = tasks.find(x => x.id === id);
       if (!t) return;
-
       document.getElementById('edit-task-id').value = t.id;
       document.getElementById('task-name').value = t.name;
       document.getElementById('task-interval').value = t.interval;
       document.getElementById('task-lastdone').value = t.lastDone;
       document.getElementById('task-priority').checked = !!t.isHighPriority;
-      document.getElementById('modal-title').innerText = "Edit Chore";
       document.getElementById('single-modal').classList.add('active');
     }
 
@@ -446,26 +590,16 @@ const firebaseConfig = {
       document.getElementById('single-form').reset();
       document.getElementById('edit-task-id').value = '';
       document.getElementById('task-lastdone').value = new Date().toISOString().split('T')[0];
-      document.getElementById('task-priority').checked = false;
-      document.getElementById('modal-title').innerText = "Add New Chore";
       document.getElementById('single-modal').classList.add('active');
     }
 
     function openBulkModal() {
       document.getElementById('bulk-lastdone').value = new Date().toISOString().split('T')[0];
-      document.getElementById('bulk-priority').checked = false;
       document.getElementById('bulk-modal').classList.add('active');
     }
 
     function openCalendarModal() {
-      if (isFirebaseConfigured) {
-        db.collection('logs').get().then(snapshot => {
-          completedLogs = snapshot.docs.map(doc => doc.data());
-          renderCalendar();
-        });
-      } else {
-        renderCalendar();
-      }
+      renderCalendar();
       document.getElementById('calendar-modal').classList.add('active');
     }
 
@@ -477,8 +611,7 @@ const firebaseConfig = {
     function renderCalendar() {
       const year = currentCalDate.getFullYear();
       const month = currentCalDate.getMonth();
-      
-      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       document.getElementById('calendar-month-year').innerText = `${monthNames[month]} ${year}`;
 
       const grid = document.getElementById('calendar-grid');
@@ -487,9 +620,7 @@ const firebaseConfig = {
       const firstDay = new Date(year, month, 1).getDay();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-      for (let i = 0; i < firstDay; i++) {
-        grid.innerHTML += `<div></div>`;
-      }
+      for (let i = 0; i < firstDay; i++) { grid.innerHTML += `<div></div>`; }
 
       for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -513,36 +644,22 @@ const firebaseConfig = {
       if (dayLogs.length === 0) {
         document.getElementById('selected-date-tasks').innerText = "No chores refreshed on this day.";
       } else {
-        document.getElementById('selected-date-tasks').innerHTML = dayLogs.map(l => {
-          const userStr = l.completedBy ? ` <span style="color:var(--primary); font-weight:600;">(by ${l.completedBy})</span>` : '';
-          return `• ${l.name}${userStr}`;
-        }).join('<br>');
+        document.getElementById('selected-date-tasks').innerHTML = dayLogs.map(l => `• ${l.name} <span style="color:var(--primary); font-weight:600;">(by ${l.completedBy})</span>`).join('<br>');
       }
     }
 
     function closeModals() {
-      document.getElementById('user-modal').classList.remove('active');
-      document.getElementById('single-modal').classList.remove('active');
-      document.getElementById('bulk-modal').classList.remove('active');
-      document.getElementById('calendar-modal').classList.remove('active');
-    }
-
-    const cachedTasks = localStorage.getItem('cleanDeckCache');
-    if (cachedTasks) {
-      try {
-        currentFirestoreTasks = JSON.parse(cachedTasks);
-        render();
-      } catch (e) { console.error(e); }
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
     }
 
     if (isFirebaseConfigured) {
       db.collection('chores').onSnapshot(snapshot => {
         currentFirestoreTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        localStorage.setItem('cleanDeckCache', JSON.stringify(currentFirestoreTasks));
         render();
-        backfillExistingTaskLogs(currentFirestoreTasks);
       });
-    } else { render(); }
+    } else { 
+      render(); 
+    }
 
     let showAll = false;
     function toggleAllTasks() {
