@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CleanDeck — Shared Chore Tracker</title>
+  <!-- Google Fonts & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    :root {
+      --bg-main: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --accent-red: #ef4444;
+      --accent-red-bg: #fef2f2;
+      --accent-amber: #f59e0b;
+      --accent-amber-bg: #fffbeb;
+      --accent-green: #10b981;
+      --accent-green-bg: #ecfdf5;
+      --border-color: #e2e8f0;
+      --radius: 16px;
+      --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      padding: 20px 16px 80px 16px;
+      max-width: 500px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-top: 8px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      background: var(--primary);
+      color: white;
+      padding: 10px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .tagline {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .add-btn-header {
+      background: var(--primary-light);
+      color: var(--primary);
+      border: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .config-alert {
+      background: var(--accent-amber-bg);
+      border: 1px solid #fcd34d;
+      color: #92400e;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.4;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .top-3-container {
+      margin-bottom: 32px;
+    }
+
+    .task-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .task-card.top-priority {
+      border-left: 5px solid var(--accent-red);
+    }
+
+    .task-info {
+      flex: 1;
+      padding-right: 12px;
+    }
+
+    .task-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--text-main);
+    }
+
+    .task-meta {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .badge {
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .badge-red { background: var(--accent-red-bg); color: var(--accent-red); }
+    .badge-amber { background: var(--accent-amber-bg); color: var(--accent-amber); }
+    .badge-green { background: var(--accent-green-bg); color: var(--accent-green); }
+
+    .complete-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .toggle-all-btn {
+      width: 100%;
+      background: transparent;
+      border: 1px dashed var(--border-color);
+      padding: 12px;
+      border-radius: 12px;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: flex-end;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: white;
+      width: 100%;
+      max-width: 500px;
+      border-radius: 24px 24px 0 0;
+      padding: 24px;
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-group input { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; }
+
+    .submit-btn {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .delete-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; opacity: 0.6; }
+    .delete-btn:hover { opacity: 1; color: var(--accent-red); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon"><i data-lucide="sparkles"></i></div>
+      <div>
+        <h1>CleanDeck</h1>
+        <div class="tagline">Shared Chore Priority</div>
+      </div>
+    </div>
+    <button class="add-btn-header" onclick="openModal()"><i data-lucide="plus"></i></button>
+  </header>
+
+  <!-- Demo Alert (Appears until Firebase keys are pasted) -->
+  <div id="demo-alert" class="config-alert" style="display: none;">
+    <i data-lucide="info" style="min-width: 18px; margin-top: 2px;"></i>
+    <div>
+      <strong>Demo Mode:</strong> Running on local browser data. Connect your free Firebase Database keys in the script below to enable real-time sync with your partner!
+    </div>
+  </div>
+
+  <!-- Top 3 Priority Recommendations -->
+  <section class="top-3-container">
+    <div class="section-title">
+      <i data-lucide="zap" style="color: var(--accent-amber);"></i>
+      Recommended for Today (Top 3)
+    </div>
+    <div id="top-3-list"></div>
+  </section>
+
+  <!-- Remaining Tasks Toggle -->
+  <section>
+    <button class="toggle-all-btn" onclick="toggleAllTasks()">
+      <span id="toggle-text">Show All Other Tasks</span>
+      <i data-lucide="chevron-down" id="toggle-icon"></i>
+    </button>
+    
+    <div id="all-tasks-container" style="display: none;">
+      <div class="section-title"><i data-lucide="list"></i> All Chores</div>
+      <div id="all-tasks-list"></div>
+    </div>
+  </section>
+
+  <!-- Add Task Modal -->
+  <div class="modal-overlay" id="task-modal">
+    <div class="modal">
+      <div style="display:flex; justify-between; align-items:center; margin-bottom: 20px;">
+        <h2 style="font-size: 1.15rem; font-weight: 700;">Add New Chore</h2>
+        <button class="delete-btn" onclick="closeModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="add-task-form" onsubmit="handleAddTask(event)">
+        <div class="form-group">
+          <label>Chore Name</label>
+          <input type="text" id="task-name" placeholder="e.g. Deep Clean Oven" required>
+        </div>
+        <div class="form-group">
+          <label>Repeat Frequency (Days)</label>
+          <input type="number" id="task-interval" min="1" placeholder="e.g. 7, 14, 30" required>
+        </div>
+        <div class="form-group">
+          <label>Last Done Date</label>
+          <input type="date" id="task-lastdone" required>
+        </div>
+        <button type="submit" class="submit-btn">Save Chore</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase CDN Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ------------------------------------------------------------------------
+    // 1. FIREBASE CONFIGURATION (Paste your free Firebase project keys here)
+    // ------------------------------------------------------------------------
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    let db = null;
+    let isFirebaseConfigured = false;
+
+    if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+      try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        isFirebaseConfigured = true;
+      } catch (e) { console.error("Firebase init failed:", e); }
+    }
+
+    // Default Demo Data (Used if Firebase is not yet connected)
+    let localTasks = [
+      { id: '1', name: 'Deep Clean Oven', interval: 30, lastDone: getPastDate(42) },
+      { id: '2', name: 'Vacuum Living Room', interval: 7, lastDone: getPastDate(11) },
+      { id: '3', name: 'Wipe Down Kitchen Counters', interval: 2, lastDone: getPastDate(3) },
+      { id: '4', name: 'Clean Bathroom Mirrors', interval: 14, lastDone: getPastDate(5) }
+    ];
+
+    function getPastDate(daysAgo) {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return d.toISOString().split('T')[0];
+    }
+
+    // ------------------------------------------------------------------------
+    // 2. PRIORITY ALGORITHM
+    // ------------------------------------------------------------------------
+    function calculateTaskStats(task) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const lastDone = new Date(task.lastDone); lastDone.setHours(0,0,0,0);
+
+      const daysElapsed = Math.floor((today - lastDone) / (1000 * 60 * 60 * 24));
+      const daysOverdue = daysElapsed - task.interval;
+
+      return { ...task, daysElapsed, daysOverdue };
+    }
+
+    function sortTasks(tasks) {
+      return tasks
+        .map(calculateTaskStats)
+        .sort((a, b) => b.daysOverdue - a.daysOverdue); // Highest overdue score first
+    }
+
+    // ------------------------------------------------------------------------
+    // 3. UI RENDERING
+    // ------------------------------------------------------------------------
+    let currentFirestoreTasks = [];
+
+    function render() {
+      const tasksToRender = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
+      const sorted = sortTasks(tasksToRender);
+
+      const top3 = sorted.slice(0, 3);
+      const remaining = sorted.slice(3);
+
+      renderTaskList('top-3-list', top3, true);
+      renderTaskList('all-tasks-list', remaining, false);
+
+      document.getElementById('demo-alert').style.display = isFirebaseConfigured ? 'none' : 'flex';
+      lucide.createIcons();
+    }
+
+    function renderTaskList(containerId, tasks, isTop3) {
+      const container = document.getElementById(containerId);
+      if (tasks.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:20px; color:#64748b;">No chores in this section! 🎉</div>`;
+        return;
+      }
+
+      container.innerHTML = tasks.map(t => {
+        let badgeClass = 'badge-green';
+        let badgeText = `${t.daysElapsed}d ago (On time)`;
+
+        if (t.daysOverdue > 0) {
+          badgeClass = 'badge-red';
+          badgeText = `${t.daysOverdue} day${t.daysOverdue > 1 ? 's' : ''} overdue`;
+        } else if (t.daysOverdue === 0) {
+          badgeClass = 'badge-amber';
+          badgeText = `Due today`;
+        }
+
+        return `
+          <div class="task-card ${isTop3 && t.daysOverdue > 0 ? 'top-priority' : ''}">
+            <div class="task-info">
+              <div class="task-title">${t.name}</div>
+              <div class="task-meta">
+                <span class="badge ${badgeClass}">${badgeText}</span>
+                <span>Every ${t.interval}d</span>
+                <button class="delete-btn" onclick="deleteTask('${t.id}')"><i data-lucide="trash-2" style="width:14px;"></i></button>
+              </div>
+            </div>
+            <button class="complete-btn" onclick="completeTask('${t.id}')">
+              <i data-lucide="check"></i> Done
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ------------------------------------------------------------------------
+    // 4. ACTIONS & REALTIME SYNC
+    // ------------------------------------------------------------------------
+    async function completeTask(id) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (isFirebaseConfigured) {
+        await db.collection('chores').doc(id).update({ lastDone: todayStr });
+      } else {
+        const task = localTasks.find(t => t.id === id);
+        if (task) task.lastDone = todayStr;
+        render();
+      }
+    }
+
+    async function handleAddTask(e) {
+      e.preventDefault();
+      const name = document.getElementById('task-name').value;
+      const interval = parseInt(document.getElementById('task-interval').value);
+      const lastDone = document.getElementById('task-lastdone').value;
+
+      if (isFirebaseConfigured) {
+        await db.collection('chores').add({ name, interval, lastDone });
+      } else {
+        localTasks.push({ id: Date.now().toString(), name, interval, lastDone });
+        render();
+      }
+
+      closeModal();
+      document.getElementById('add-task-form').reset();
+    }
+
+    async function deleteTask(id) {
+      if (!confirm("Delete this chore?")) return;
+      if (isFirebaseConfigured) {
+        await db.collection('chores').doc(id).delete();
+      } else {
+        localTasks = localTasks.filter(t => t.id !== id);
+        render();
+      }
+    }
+
+    if (isFirebaseConfigured) {
+      db.collection('chores').onSnapshot(snapshot => {
+        currentFirestoreTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        render();
+      });
+    } else {
+      document.getElementById('task-lastdone').value = new Date().toISOString().split('T')[0];
+      render();
+    }
+
+    function openModal() { document.getElementById('task-modal').classList.add('active'); }
+    function closeModal() { document.getElementById('task-modal').classList.remove('active'); }
+
+    let showAll = false;
+    function toggleAllTasks() {
+      showAll = !showAll;
+      document.getElementById('all-tasks-container').style.display = showAll ? 'block' : 'none';
+      document.getElementById('toggle-text').innerText = showAll ? 'Hide Full List' : 'Show All Other Tasks';
+    }
+  </script>
+</body>
+</html>
