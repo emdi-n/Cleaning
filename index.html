@@ -26,7 +26,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: var(--bg-main); color: var(--text-main); padding: 20px 16px 80px 16px; max-width: 500px; margin: 0 auto; min-height: 100vh; }
     
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-top: 8px; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-top: 8px; }
     .brand { display: flex; align-items: center; gap: 10px; }
     .brand-icon { background: var(--primary); color: white; padding: 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
     h1 { font-size: 1.35rem; font-weight: 800; }
@@ -35,6 +35,9 @@
     .header-actions { display: flex; gap: 6px; }
     .btn-header { background: var(--primary-light); color: var(--primary); border: none; height: 42px; padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
     .btn-header.icon-only { width: 42px; padding: 0; justify-content: center; }
+
+    .user-bar { background: var(--card-bg); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 0.85rem; font-weight: 600; }
+    .user-badge { background: var(--primary-light); color: var(--primary); padding: 4px 10px; border-radius: 20px; font-weight: 700; }
 
     .section-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
     .top-3-container { margin-bottom: 28px; }
@@ -80,6 +83,12 @@
     </div>
   </header>
 
+  <!-- User Identifier Bar -->
+  <div class="user-bar">
+    <div>Logged in as: <span class="user-badge" id="current-user-display">Guest</span></div>
+    <button class="action-icon-btn" onclick="openUserModal()"><i data-lucide="user"></i> Switch User</button>
+  </div>
+
   <!-- Top 3 Priority -->
   <section class="top-3-container">
     <div class="section-title"><i data-lucide="zap" style="color: var(--accent-amber);"></i> Recommended Tasks</div>
@@ -97,6 +106,23 @@
       <div id="all-tasks-list"></div>
     </div>
   </section>
+
+  <!-- Switch User Modal -->
+  <div class="modal-overlay" id="user-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 style="font-size: 1.15rem; font-weight: 700;">Who is completing tasks?</h2>
+        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="handleUserSubmit(event)">
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" id="user-name-input" placeholder="e.g. Alex, Sam, Jordan" required>
+        </div>
+        <button type="submit" class="submit-btn">Set Name</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Single Task Modal -->
   <div class="modal-overlay" id="single-modal">
@@ -186,14 +212,14 @@
 
   <script>
     // PASTE YOUR FIREBASE KEYS HERE:
-const firebaseConfig = {
-  apiKey: "AIzaSyAHgbJIEAEbrZ0kagyPgfo7jdXVmhhIjEY",
-  authDomain: "cleaning-emdi.firebaseapp.com",
-  projectId: "cleaning-emdi",
-  storageBucket: "cleaning-emdi.firebasestorage.app",
-  messagingSenderId: "750406957208",
-  appId: "1:750406957208:web:056ae100e9e1febf6a38ed"
-};
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
     let db = null;
     let isFirebaseConfigured = false;
@@ -206,10 +232,29 @@ const firebaseConfig = {
       } catch (e) { console.error("Firebase failed:", e); }
     }
 
+    let currentUser = localStorage.getItem('cleanDeckUser') || 'Someone';
+    document.getElementById('current-user-display').innerText = currentUser;
+
     let localTasks = [];
     let currentFirestoreTasks = [];
     let completedLogs = [];
     let currentCalDate = new Date();
+
+    function openUserModal() {
+      document.getElementById('user-name-input').value = currentUser === 'Someone' ? '' : currentUser;
+      document.getElementById('user-modal').classList.add('active');
+    }
+
+    function handleUserSubmit(e) {
+      e.preventDefault();
+      const newName = document.getElementById('user-name-input').value.trim();
+      if (newName) {
+        currentUser = newName;
+        localStorage.setItem('cleanDeckUser', currentUser);
+        document.getElementById('current-user-display').innerText = currentUser;
+      }
+      closeModals();
+    }
 
     function calculateTaskStats(task) {
       const today = new Date(); today.setHours(0,0,0,0);
@@ -270,7 +315,6 @@ const firebaseConfig = {
       }).join('');
     }
 
-    // Auto-backfill missing historical logs for existing tasks
     async function backfillExistingTaskLogs(tasks) {
       if (!isFirebaseConfigured || tasks.length === 0) return;
       
@@ -283,7 +327,7 @@ const firebaseConfig = {
         const hasLog = existingLogs.some(log => log.taskId === task.id && log.date === task.lastDone);
         if (!hasLog && task.lastDone) {
           const logRef = db.collection('logs').doc();
-          batch.set(logRef, { taskId: task.id, name: task.name, date: task.lastDone });
+          batch.set(logRef, { taskId: task.id, name: task.name, date: task.lastDone, completedBy: 'Initial Setup' });
           hasNewLogs = true;
         }
       });
@@ -294,19 +338,25 @@ const firebaseConfig = {
     }
 
     async function completeTask(id) {
+      if (currentUser === 'Someone') {
+        openUserModal();
+        return;
+      }
+
       const todayStr = new Date().toISOString().split('T')[0];
       const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
       const task = tasks.find(t => t.id === id);
 
       if (isFirebaseConfigured) {
-        await db.collection('chores').doc(id).update({ lastDone: todayStr });
+        await db.collection('chores').doc(id).update({ lastDone: todayStr, lastDoneBy: currentUser });
         if (task) {
-          await db.collection('logs').add({ taskId: id, name: task.name, date: todayStr });
+          await db.collection('logs').add({ taskId: id, name: task.name, date: todayStr, completedBy: currentUser });
         }
       } else {
         if (task) {
           task.lastDone = todayStr;
-          completedLogs.push({ taskId: id, name: task.name, date: todayStr });
+          task.lastDoneBy = currentUser;
+          completedLogs.push({ taskId: id, name: task.name, date: todayStr, completedBy: currentUser });
         }
         render();
       }
@@ -331,11 +381,11 @@ const firebaseConfig = {
       } else {
         if (isFirebaseConfigured) { 
           const newDoc = await db.collection('chores').add({ name, interval, lastDone, isHighPriority }); 
-          await db.collection('logs').add({ taskId: newDoc.id, name, date: lastDone });
+          await db.collection('logs').add({ taskId: newDoc.id, name, date: lastDone, completedBy: currentUser });
         } else { 
           const newId = Date.now().toString();
           localTasks.push({ id: newId, name, interval, lastDone, isHighPriority }); 
-          completedLogs.push({ taskId: newId, name, date: lastDone });
+          completedLogs.push({ taskId: newId, name, date: lastDone, completedBy: currentUser });
           render(); 
         }
       }
@@ -358,14 +408,14 @@ const firebaseConfig = {
           const logRef = db.collection('logs').doc();
           
           batch.set(docRef, { name, interval, lastDone, isHighPriority });
-          batch.set(logRef, { taskId: docRef.id, name, date: lastDone });
+          batch.set(logRef, { taskId: docRef.id, name, date: lastDone, completedBy: currentUser });
         });
         await batch.commit();
       } else {
         names.forEach(name => {
           const newId = Math.random().toString();
           localTasks.push({ id: newId, name, interval, lastDone, isHighPriority });
-          completedLogs.push({ taskId: newId, name, date: lastDone });
+          completedLogs.push({ taskId: newId, name, date: lastDone, completedBy: currentUser });
         });
         render();
       }
@@ -463,11 +513,15 @@ const firebaseConfig = {
       if (dayLogs.length === 0) {
         document.getElementById('selected-date-tasks').innerText = "No chores refreshed on this day.";
       } else {
-        document.getElementById('selected-date-tasks').innerHTML = dayLogs.map(l => `• ${l.name}`).join('<br>');
+        document.getElementById('selected-date-tasks').innerHTML = dayLogs.map(l => {
+          const userStr = l.completedBy ? ` <span style="color:var(--primary); font-weight:600;">(by ${l.completedBy})</span>` : '';
+          return `• ${l.name}${userStr}`;
+        }).join('<br>');
       }
     }
 
     function closeModals() {
+      document.getElementById('user-modal').classList.remove('active');
       document.getElementById('single-modal').classList.remove('active');
       document.getElementById('bulk-modal').classList.remove('active');
       document.getElementById('calendar-modal').classList.remove('active');
