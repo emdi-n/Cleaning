@@ -1,225 +1,240 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CleanDeck — Shared Chore Tracker</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CleanDeck Chores</title>
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   
   <style>
     :root {
-      --bg-main: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
       --primary: #2563eb;
       --primary-light: #eff6ff;
-      --accent-amber: #f59e0b;
-      --accent-purple: #8b5cf6;
-      --border-color: #e2e8f0;
-      --radius: 16px;
-      --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
-    body { background-color: var(--bg-main); color: var(--text-main); padding: 20px 16px 80px 16px; max-width: 500px; margin: 0 auto; min-height: 100vh; }
-    
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-top: 8px; }
-    .brand { display: flex; align-items: center; gap: 10px; }
-    .brand-icon { background: var(--primary); color: white; padding: 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-    h1 { font-size: 1.35rem; font-weight: 800; }
-    .tagline { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
-    
-    .header-actions { display: flex; gap: 6px; }
-    .btn-header { background: var(--primary-light); color: var(--primary); border: none; height: 42px; padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-    .btn-header.icon-only { width: 42px; padding: 0; justify-content: center; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 80px; }
 
-    /* User Profile & XP Bar */
-    .user-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 14px 16px; border-radius: var(--radius); margin-bottom: 20px; box-shadow: var(--shadow); }
-    .user-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .user-info { display: flex; align-items: center; gap: 8px; }
-    .level-badge { background: var(--accent-purple); color: white; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; }
-    .user-name { font-weight: 700; font-size: 0.95rem; }
-    .rank-title { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
 
-    .xp-bar-container { background: #e2e8f0; height: 10px; border-radius: 10px; overflow: hidden; position: relative; margin-top: 6px; }
-    .xp-bar-fill { background: linear-gradient(90deg, #3b82f6, #8b5cf6); height: 100%; width: 0%; transition: width 0.4s ease-in-out; border-radius: 10px; }
-    .xp-text { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .logo { font-size: 1.25rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 8px; }
 
-    .section-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-    .top-3-container { margin-bottom: 28px; }
+    .profile-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      cursor: pointer;
+    }
 
-    .task-card { background: var(--card-bg); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-    .task-info { flex: 1; padding-right: 12px; }
-    .task-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
-    .xp-tag { background: #fef3c7; color: #b45309; font-size: 0.7rem; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
-    .task-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .profile-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; }
+    .level-badge { background: var(--primary); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
 
-    .complete-btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .complete-btn:active { transform: scale(0.96); }
+    .xp-bar-bg { background: #cbd5e1; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 4px; }
+    .xp-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.3s ease; }
+    .xp-text { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); }
 
-    .toggle-all-btn { width: 100%; background: transparent; border: 1px dashed var(--border-color); padding: 12px; border-radius: 12px; color: var(--text-muted); font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
+    .container { max-width: 600px; margin: 0 auto; padding: 16px; }
 
-    /* Modals */
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
+    .section-title { font-size: 1.1rem; font-weight: 700; margin: 20px 0 10px; display: flex; justify-content: space-between; align-items: center; }
+
+    .task-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .task-info { flex: 1; }
+    .task-title { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .xp-tag { background: #fef3c7; color: #d97706; font-size: 0.75rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
+
+    .task-meta { display: flex; gap: 12px; margin-top: 6px; font-size: 0.8rem; color: var(--text-muted); }
+    .action-icon-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 2px; font-size: 0.8rem; }
+
+    .complete-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .toggle-btn {
+      background: none;
+      border: 1px dashed var(--border);
+      width: 100%;
+      padding: 10px;
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      font-weight: 600;
+      cursor: pointer;
+      margin: 10px 0;
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 16px;
+    }
     .modal-overlay.active { display: flex; }
-    .modal { background: white; width: 100%; max-width: 500px; border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
-    .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 0.95rem; }
-    .form-group textarea { height: 120px; resize: none; }
-
-    .submit-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1rem; cursor: pointer; }
-    .action-icon-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; opacity: 0.8; padding: 2px; display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; }
-    .action-icon-btn:hover { opacity: 1; color: var(--primary); }
-
-    /* Reward / Loot Popup Overlay */
-    .reward-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 2000; }
-    .reward-overlay.active { display: flex; }
-    .reward-card { background: white; padding: 28px 24px; border-radius: 24px; text-align: center; width: 85%; max-width: 360px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    
-    @keyframes popIn {
-      0% { transform: scale(0.7); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
+    .modal {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 450px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
     }
 
-    .reward-title { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
-    .reward-mult { font-size: 1.1rem; font-weight: 800; color: var(--accent-purple); margin-bottom: 8px; }
-    .reward-xp { font-size: 2.5rem; font-weight: 800; color: var(--primary); margin-bottom: 12px; }
-    .level-up-banner { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; border-radius: 10px; padding: 8px 12px; font-size: 0.85rem; font-weight: 700; margin-bottom: 16px; display: none; }
+    .modal-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
 
-    /* Leaderboard List */
-    .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color); }
-    .leaderboard-item:last-child { border-bottom: none; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    .btn { padding: 10px 16px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .btn-primary { background: var(--primary); color: white; }
+
+    /* Bottom Floating Action Bar */
+    .fab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0; right: 0;
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 20;
+    }
+    .fab-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; font-size: 0.7rem; font-weight: 600; gap: 2px; }
+    .fab-main { background: var(--primary); color: white; width: 48px; height: 48px; border-radius: 24px; display: flex; justify-content: center; align-items: center; border: none; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4); margin-top: -20px; }
+
+    /* Leaderboard & Rewards */
+    .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .reward-box { text-align: center; padding: 20px; }
+    .reward-title { font-size: 1.5rem; font-weight: 800; color: #d97706; margin-bottom: 8px; }
   </style>
 </head>
 <body>
 
   <header>
-    <div class="brand">
-      <div class="brand-icon"><i data-lucide="sparkles"></i></div>
-      <div>
-        <h1>CleanDeck</h1>
-        <div class="tagline">Shared Chore Tracker</div>
-      </div>
+    <div class="header-top">
+      <div class="logo"><i data-lucide="sparkles"></i> CleanDeck</div>
     </div>
-    <div class="header-actions">
-      <button class="btn-header" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i> Ranks</button>
-      <button class="btn-header icon-only" onclick="openCalendarModal()"><i data-lucide="calendar"></i></button>
-      <button class="btn-header icon-only" onclick="openBulkModal()"><i data-lucide="layers"></i></button>
-      <button class="btn-header icon-only" onclick="openSingleModal()"><i data-lucide="plus"></i></button>
+    
+    <div class="profile-card" onclick="openUserModal()">
+      <div class="profile-header">
+        <div><span id="current-user-display">Alex</span> <span style="font-weight: 400; color: var(--text-muted);" id="user-rank-title">Dust Buster</span></div>
+        <span class="level-badge" id="user-lvl-badge">Lvl 1</span>
+      </div>
+      <div class="xp-bar-bg">
+        <div class="xp-bar-fill" id="xp-bar-fill"></div>
+      </div>
+      <div class="xp-text">
+        <span id="xp-current-text">0 / 100 XP</span>
+        <span id="xp-total-text">Total: 0 XP</span>
+      </div>
     </div>
   </header>
 
-  <!-- Active User & XP Progress Bar -->
-  <div class="user-card">
-    <div class="user-card-top">
-      <div class="user-info">
-        <span class="level-badge" id="user-lvl-badge">Lvl 1</span>
-        <div>
-          <div class="user-name" id="current-user-display">Guest</div>
-          <div class="rank-title" id="user-rank-title">Novice Cleaner</div>
-        </div>
-      </div>
-      <button class="action-icon-btn" onclick="openUserModal()"><i data-lucide="user"></i> Switch</button>
+  <div class="container">
+    <div class="section-title">
+      <span>🔥 Priority Refresh</span>
+      <span style="font-size: 0.8rem; font-weight: 400; color: var(--text-muted);">Top 3 Focus Tasks</span>
     </div>
-    <div class="xp-bar-container">
-      <div class="xp-bar-fill" id="xp-bar-fill"></div>
-    </div>
-    <div class="xp-text">
-      <span id="xp-current-text">0 / 100 XP</span>
-      <span id="xp-total-text">Total: 0 XP</span>
-    </div>
-  </div>
-
-  <!-- Top 3 Priority -->
-  <section class="top-3-container">
-    <div class="section-title"><i data-lucide="zap" style="color: var(--accent-amber);"></i> Recommended Tasks</div>
     <div id="top-3-list"></div>
-  </section>
 
-  <!-- All Tasks -->
-  <section>
-    <button class="toggle-all-btn" onclick="toggleAllTasks()">
+    <button class="toggle-btn" onclick="toggleAllTasks()">
       <span id="toggle-text">Show All Other Tasks</span>
-      <i data-lucide="chevron-down" id="toggle-icon"></i>
     </button>
+
     <div id="all-tasks-container" style="display: none;">
-      <div class="section-title"><i data-lucide="list"></i> All Chores</div>
+      <div class="section-title">All Tasks</div>
       <div id="all-tasks-list"></div>
     </div>
-  </section>
-
-  <!-- Variable Reward / XP Drop Popup -->
-  <div class="reward-overlay" id="reward-modal">
-    <div class="reward-card">
-      <div class="reward-title" id="reward-type-title">CHORE COMPLETE!</div>
-      <div class="reward-mult" id="reward-mult-text">⚡ 1.0x Base Payout</div>
-      <div class="reward-xp" id="reward-xp-text">+25 XP</div>
-      <div class="level-up-banner" id="level-up-banner">🎉 LEVEL UP! You reached <span id="new-lvl-text">Lvl 2</span>!</div>
-      <button class="submit-btn" onclick="closeRewardModal()">Claim XP</button>
-    </div>
   </div>
 
-  <!-- Leaderboard Modal -->
-  <div class="modal-overlay" id="leaderboard-modal">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 style="font-size: 1.15rem; font-weight: 700;">Household Leaderboard</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
-      </div>
-      <div id="leaderboard-list"></div>
-    </div>
-  </div>
-
-  <!-- Switch User Modal -->
-  <div class="modal-overlay" id="user-modal">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 style="font-size: 1.15rem; font-weight: 700;">Who is completing tasks?</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
-      </div>
-      <form onsubmit="handleUserSubmit(event)">
-        <div class="form-group">
-          <label>Your Name</label>
-          <input type="text" id="user-name-input" placeholder="e.g. Alex, Sam, Jordan" required>
-        </div>
-        <button type="submit" class="submit-btn">Set Profile</button>
-      </form>
-    </div>
+  <!-- Bottom Nav -->
+  <div class="fab-bar">
+    <button class="fab-btn" onclick="openCalendarModal()"><i data-lucide="calendar"></i>Calendar</button>
+    <button class="fab-btn" onclick="openBulkModal()"><i data-lucide="list-plus"></i>Bulk Add</button>
+    <button class="fab-main" onclick="openSingleModal()"><i data-lucide="plus"></i></button>
+    <button class="fab-btn" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i>Ranks</button>
+    <button class="fab-btn" onclick="openUserModal()"><i data-lucide="user"></i>Switch</button>
   </div>
 
   <!-- Single Task Modal -->
   <div class="modal-overlay" id="single-modal">
     <div class="modal">
-      <div class="modal-header">
-        <h2 id="modal-title" style="font-size: 1.15rem; font-weight: 700;">Add New Chore</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
-      </div>
+      <div class="modal-title"><span>Task Options</span> <i data-lucide="x" style="cursor:pointer;" onclick="closeModals()"></i></div>
       <form id="single-form" onsubmit="handleSingleSubmit(event)">
-        <input type="hidden" id="edit-task-id">
+        <input type="hidden" id="edit-task-id" />
         <div class="form-group">
           <label>Chore Name</label>
-          <input type="text" id="task-name" placeholder="e.g. Clean Oven" required>
+          <input type="text" id="task-name" required placeholder="e.g. Clean Bathrooms" />
         </div>
         <div class="form-group">
-          <label>Repeat Frequency (Days)</label>
-          <input type="number" id="task-interval" min="1" placeholder="e.g. 14" required>
+          <label>Frequency Interval (Days)</label>
+          <input type="number" id="task-interval" required min="1" value="7" />
         </div>
         <div class="form-group">
-          <label>Last Done Date</label>
-          <input type="date" id="task-lastdone" required>
+          <label>Last Completed Date</label>
+          <input type="date" id="task-lastdone" required />
         </div>
         <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" id="task-priority" style="width: auto;">
-          <label for="task-priority" style="margin-bottom: 0;">★ High Priority (Extra overdue XP)</label>
+          <input type="checkbox" id="task-priority" style="width: auto;" />
+          <label for="task-priority" style="margin: 0;">High Priority Chore</label>
         </div>
-        <button type="submit" class="submit-btn">Save Chore</button>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Chore</button>
+        </div>
       </form>
     </div>
   </div>
@@ -227,53 +242,93 @@
   <!-- Bulk Add Modal -->
   <div class="modal-overlay" id="bulk-modal">
     <div class="modal">
-      <div class="modal-header">
-        <h2 style="font-size: 1.15rem; font-weight: 700;">Bulk Add Chores</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
-      </div>
+      <div class="modal-title"><span>Bulk Import</span> <i data-lucide="x" style="cursor:pointer;" onclick="closeModals()"></i></div>
       <form onsubmit="handleBulkSubmit(event)">
         <div class="form-group">
-          <label>List of Chores (One chore per line)</label>
-          <textarea id="bulk-names" placeholder="Vacuum Rugs&#10;Mop Floors&#10;Wipe Baseboards" required></textarea>
+          <label>Chore List (One per line)</label>
+          <textarea id="bulk-names" rows="5" required placeholder="Wipe counters&#10;Vacuum living room&#10;Take out trash"></textarea>
         </div>
         <div class="form-group">
-          <label>Default Frequency for All (Days)</label>
-          <input type="number" id="bulk-interval" value="14" min="1" required>
+          <label>Shared Interval (Days)</label>
+          <input type="number" id="bulk-interval" required min="1" value="7" />
         </div>
         <div class="form-group">
-          <label>Set Last Done Date for All</label>
-          <input type="date" id="bulk-lastdone" required>
+          <label>Last Completed Date</label>
+          <input type="date" id="bulk-lastdone" required />
         </div>
-        <button type="submit" class="submit-btn">Import Chores</button>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Import All</button>
+        </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Switch User Modal -->
+  <div class="modal-overlay" id="user-modal">
+    <div class="modal">
+      <div class="modal-title"><span>Switch Profile</span> <i data-lucide="x" style="cursor:pointer;" onclick="closeModals()"></i></div>
+      <form onsubmit="handleUserSubmit(event)">
+        <div class="form-group">
+          <label>Select or Enter Username</label>
+          <input type="text" id="user-name-input" required />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Switch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Leaderboard Modal -->
+  <div class="modal-overlay" id="leaderboard-modal">
+    <div class="modal">
+      <div class="modal-title"><span>Household Standings</span> <i data-lucide="x" style="cursor:pointer;" onclick="closeModals()"></i></div>
+      <div id="leaderboard-list"></div>
+      <div class="form-actions" style="margin-top: 16px;">
+        <button class="btn btn-secondary" onclick="closeModals()">Close</button>
+      </div>
     </div>
   </div>
 
   <!-- Calendar History Modal -->
   <div class="modal-overlay" id="calendar-modal">
     <div class="modal">
-      <div class="modal-header">
-        <h2 style="font-size: 1.15rem; font-weight: 700;">Completion History</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
-      </div>
+      <div class="modal-title"><span>Completion Logs</span> <i data-lucide="x" style="cursor:pointer;" onclick="closeModals()"></i></div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <button class="action-icon-btn" onclick="changeMonth(-1)"><i data-lucide="chevron-left"></i> Prev</button>
-        <strong id="calendar-month-year" style="font-size: 0.95rem;"></strong>
-        <button class="action-icon-btn" onclick="changeMonth(1)">Next <i data-lucide="chevron-right"></i></button>
+        <button class="btn btn-secondary" style="padding: 4px 8px;" onclick="changeMonth(-1)">◀</button>
+        <strong id="calendar-month-year"></strong>
+        <button class="btn btn-secondary" style="padding: 4px 8px;" onclick="changeMonth(1)">▶</button>
       </div>
-      <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 0.8rem; margin-bottom: 12px;"></div>
-      <div id="day-log-container" style="border-top: 1px solid var(--border-color); padding-top: 12px;">
-        <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;" id="selected-date-title">Select a day to view history</div>
-        <div id="selected-date-tasks" style="font-size: 0.82rem; color: var(--text-muted);"></div>
+      <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 0.8rem;"></div>
+      <div id="selected-day-details" style="margin-top: 14px; font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 10px;">
+        <strong id="selected-date-title">Select a day</strong>
+        <div id="selected-date-tasks" style="color: var(--text-muted); margin-top: 4px;"></div>
+      </div>
+      <div class="form-actions" style="margin-top: 16px;">
+        <button class="btn btn-secondary" onclick="closeModals()">Close</button>
       </div>
     </div>
   </div>
 
-  <!-- Firebase Libraries -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <!-- Reward Modal -->
+  <div class="modal-overlay" id="reward-modal">
+    <div class="modal">
+      <div class="reward-box">
+        <div class="reward-title" id="reward-type-title">CHORE COMPLETE!</div>
+        <p id="reward-mult-text" style="color: var(--text-muted); font-size: 0.9rem;"></p>
+        <div style="font-size: 2.5rem; font-weight: 900; color: var(--primary); margin: 10px 0;" id="reward-xp-text">+0 XP</div>
+        <div id="level-up-banner" style="display:none; background: #fef3c7; color: #d97706; font-weight: 700; padding: 8px; border-radius: 8px; margin-bottom: 12px;">
+          🎉 LEVEL UP! <span id="new-lvl-text"></span>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="closeRewardModal()">Awesome!</button>
+      </div>
+    </div>
+  </div>
 
   <script>
+    // Replace the quoted text below with your real Firebase config values:
 const firebaseConfig = {
   apiKey: "AIzaSyAHgbJIEAEbrZ0kagyPgfo7jdXVmhhIjEY",
   authDomain: "cleaning-emdi.firebaseapp.com",
@@ -282,7 +337,8 @@ const firebaseConfig = {
   messagingSenderId: "750406957208",
   appId: "1:750406957208:web:056ae100e9e1febf6a38ed"
 };
-let db = null;
+
+    let db = null;
     let isFirebaseConfigured = false;
 
     if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -698,6 +754,9 @@ let db = null;
       document.getElementById('all-tasks-container').style.display = showAll ? 'block' : 'none';
       document.getElementById('toggle-text').innerText = showAll ? 'Hide Full List' : 'Show All Other Tasks';
     }
+
+    // Initialize Lucide icons on page load
+    lucide.createIcons();
   </script>
 </body>
 </html>
