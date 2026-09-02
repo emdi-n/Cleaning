@@ -858,189 +858,193 @@ function initUserData(username) {
     }
 
     /* Section 3.10: Task Completion & Reward Calculation Logic */
-    async function completeTask(id) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
-      const task = tasks.find(t => t.id === id);
-      if (!task) return;
+    /* Section 3.10: Task Completion & Reward Calculation Logic */
+async function completeTask(id) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
 
-      const roomScores = calculateRoomScores(tasks);
-      const stats = calculateTaskStats(task, roomScores);
-      const userObj = appUsers[currentUser];
-      const rawProducts = (task.products || '').toLowerCase();
-const productList = rawProducts.split(',').map(p => p.trim());
+  const roomScores = calculateRoomScores(tasks);
+  const stats = calculateTaskStats(task, roomScores);
+  
+  // 1. SAFE USER & CRITTER INITIALIZATION
+  const userObj = appUsers[currentUser] = appUsers[currentUser] || {};
+  if (!userObj.critters || typeof userObj.critters !== 'object') {
+    userObj.critters = {};
+  }
+  if (!userObj.inventory || typeof userObj.inventory !== 'object') {
+    userObj.inventory = {};
+  }
 
-let unlockedNewCritter = false;
-let leveledUpCritter = false;
-let affectedCritterName = '';
+  const rawProducts = (task.products || '').toLowerCase();
+  const productList = rawProducts.split(',').map(p => p.trim());
 
-CRITTER_CATALOG.forEach(critter => {
-        const isMatch = critter.keywords.some(keyword => 
-          productList.some(p => p.includes(keyword)) || task.name.toLowerCase().includes(keyword)
-        );
+  let unlockedNewCritter = false;
+  let leveledUpCritter = false;
+  let affectedCritterName = '';
 
-        if (isMatch) {
-          affectedCritterName = critter.name;
+  // 2. SAFE CRITTER MATCHING & XP AWARDING
+  if (Array.isArray(CRITTER_CATALOG)) {
+    CRITTER_CATALOG.forEach(critter => {
+      if (!critter || !critter.id) return;
 
-          // 1. Check if critter exists in user's profile
-          if (!userObj.critters[critter.id]) {
-            // UNLOCK NEW CRITTER
-            userObj.critters[critter.id] = { lvl: 1, xp: 0 };
-            unlockedNewCritter = true;
-          } else {
-            // 2. CRITTER ALREADY EXISTS -> SAFELY GAIN XP
-            // Ensure xp and lvl are valid numbers just in case
-            userObj.critters[critter.id].xp = userObj.critters[critter.id].xp || 0;
-            userObj.critters[critter.id].lvl = userObj.critters[critter.id].lvl || 1;
+      const isMatch = (critter.keywords || []).some(keyword => 
+        productList.some(p => p.includes(keyword)) || task.name.toLowerCase().includes(keyword)
+      );
 
-            userObj.critters[critter.id].xp += 25;
+      if (isMatch) {
+        affectedCritterName = critter.name;
+        
+        // Check if the user already has this critter unlocked
+        const existingCritter = userObj.critters[critter.id];
 
-            // Level Up Check
-            const xpNeeded = userObj.critters[critter.id].lvl * 50;
-            if (userObj.critters[critter.id].xp >= xpNeeded) {
-              userObj.critters[critter.id].lvl += 1;
-              userObj.critters[critter.id].xp = 0;
-              leveledUpCritter = true;
-            }
+        if (!existingCritter) {
+          // UNLOCK
+          userObj.critters[critter.id] = { lvl: 1, xp: 0 };
+          unlockedNewCritter = true;
+        } else {
+          // LEVEL UP / GAIN XP
+          existingCritter.xp = (existingCritter.xp || 0) + 25;
+          existingCritter.lvl = existingCritter.lvl || 1;
+
+          const xpNeeded = existingCritter.lvl * 50;
+          if (existingCritter.xp >= xpNeeded) {
+            existingCritter.lvl += 1;
+            existingCritter.xp = 0;
+            leveledUpCritter = true;
           }
         }
-      });
-
-      if (userObj.lastActiveDate !== todayStr) {
-        if (!userObj.lastActiveDate) {
-          userObj.streak = 1;
-        } else {
-          const last = new Date(userObj.lastActiveDate);
-          const curr = new Date(todayStr);
-          const diff = Math.floor((curr - last) / (1000 * 60 * 60 * 24));
-          if (diff === 1) userObj.streak += 1;
-          else if (diff > 1) userObj.streak = 1;
-        }
-        userObj.lastActiveDate = todayStr;
       }
+    });
+  }
 
-      const streakBonusActive = userObj.streak >= 2;
-      const streakBonusXp = streakBonusActive ? 10 : 0;
-      const has2xBoost = isXpBoostActive(userObj);
-
-      let title = "CHORE COMPLETE!";
-      let subtext = "Revealed Reward";
-      let mainText = "";
-      let xpEarnedThisAction = 0;
-      const oldXp = userObj.xp || 0;
-
-      if (stats.isChest) {
-        title = "🧰 MYSTERY CHEST OPENED!";
-        const chestRoll = Math.random();
-
-        // Ensure user inventory exists
-        if (!userObj.inventory) userObj.inventory = {};
-
-        if (chestRoll < 0.20) {
-          // 20% Chance: Streak Saver
-          userObj.streakSavers = (userObj.streakSavers || 0) + 1;
-          subtext = "RARE ITEM FOUND!";
-          mainText = "🛡️ +1 Streak Saver";
-        } else if (chestRoll < 0.35) {
-          // 15% Chance: 2x XP Boost
-          const twentyFourHours = 24 * 60 * 60 * 1000;
-          userObj.xpBoostUntil = new Date().getTime() + twentyFourHours;
-          subtext = "BUFF ACTIVATED!";
-          mainText = "⚡ 2x XP Boost (24h)";
-        } else if (chestRoll < 0.55) {
-          // 20% Chance: Consumable Item Drop (Critter Treat)
-          userObj.inventory['Critter Treat'] = (userObj.inventory['Critter Treat'] || 0) + 1;
-          subtext = "CONSUMABLE DROPPED!";
-          mainText = "🍖 Found +1 Critter Treat!";
-        } else if (chestRoll < 0.70) {
-          // 15% Chance: Consumable Item Drop (Suction Boost)
-          userObj.inventory['Suction Boost'] = (userObj.inventory['Suction Boost'] || 0) + 1;
-          subtext = "CONSUMABLE DROPPED!";
-          mainText = "⚡ Found +1 Suction Power-Up!";
-        } else if (chestRoll < 0.80) {
-          // 10% Chance: Lump of Coal
-          subtext = "UNLUCKY!";
-          mainText = "🪨 Lump of Coal (0 XP)";
-        } else {
-          // 20% Chance: Raw Bonus XP Drop
-          let bonusXp = Math.floor(Math.random() * 51) + 50;
-          if (has2xBoost) bonusXp *= 2;
-          xpEarnedThisAction = bonusXp;
-          userObj.xp = oldXp + bonusXp;
-          subtext = has2xBoost ? "TREASURE FOUND! (2x Boost Active)" : "TREASURE FOUND!";
-          mainText = `✨ +${bonusXp} XP`;
-        }
-      } else {
-        let rawMin = 10, rawMax = 30;
-        if (stats.timeTag === "medium") { rawMin = 30; rawMax = 70; }
-        if (stats.timeTag === "long") { rawMin = 70; rawMax = 120; }
-
-        const rawXpDrop = Math.floor(Math.random() * (rawMax - rawMin + 1)) + rawMin;
-        let totalXpEarned = rawXpDrop + streakBonusXp;
-        if (has2xBoost) totalXpEarned *= 2;
-        
-        xpEarnedThisAction = totalXpEarned;
-        userObj.xp = oldXp + totalXpEarned;
-        title = "🎁 LOOT DROP REVEALED!";
-        subtext = has2xBoost 
-          ? `Base Reward: +${rawXpDrop} XP (2x Boost Applied!)` 
-          : `Base Reward: +${rawXpDrop} XP`;
-        mainText = `+${totalXpEarned} XP`;
-      }
-
-      if (unlockedNewCritter) {
-  subtext = `🎉 NEW CRITTER UNLOCKED: ${affectedCritterName}!`;
-} else if (leveledUpCritter) {
-  subtext = `⚡ ${affectedCritterName} LEVELED UP!`;
-}
-
-      const newXp = userObj.xp || 0;
-      const oldLvl = calculateLevel(oldXp).level;
-      const newLvl = calculateLevel(newXp).level;
-
-      await syncUserData(currentUser);
-
-      const logEntry = {
-        taskId: id,
-        name: task.name,
-        date: todayStr,
-        timestamp: new Date().getTime(),
-        completedBy: currentUser,
-        xpEarned: xpEarnedThisAction
-      };
-
-      if (isFirebaseConfigured) {
-        await db.collection('chores').doc(id).update({ lastDone: todayStr, lastDoneBy: currentUser });
-        await db.collection('logs').add(logEntry);
-      } else {
-        task.lastDone = todayStr;
-        task.lastDoneBy = currentUser;
-        completedLogs.push(logEntry);
-        saveLocalData();
-        render();
-      }
-
-      document.getElementById('reward-type-title').innerText = title;
-      document.getElementById('reward-subtext').innerText = subtext;
-      document.getElementById('reward-main-text').innerText = mainText;
-
-      const streakBanner = document.getElementById('streak-banner');
-      if (streakBonusActive && !stats.isChest) {
-        streakBanner.style.display = 'block';
-      } else {
-        streakBanner.style.display = 'none';
-      }
-      
-      const lvlBanner = document.getElementById('level-up-banner');
-      if (newLvl > oldLvl) {
-        document.getElementById('new-lvl-text').innerText = `Lvl ${newLvl}`;
-        lvlBanner.style.display = 'block';
-      } else {
-        lvlBanner.style.display = 'none';
-      }
-
-      document.getElementById('reward-modal').classList.add('active');
+  if (userObj.lastActiveDate !== todayStr) {
+    if (!userObj.lastActiveDate) {
+      userObj.streak = 1;
+    } else {
+      const last = new Date(userObj.lastActiveDate);
+      const curr = new Date(todayStr);
+      const diff = Math.floor((curr - last) / (1000 * 60 * 60 * 24));
+      if (diff === 1) userObj.streak += 1;
+      else if (diff > 1) userObj.streak = 1;
     }
+    userObj.lastActiveDate = todayStr;
+  }
+
+  const streakBonusActive = userObj.streak >= 2;
+  const streakBonusXp = streakBonusActive ? 10 : 0;
+  const has2xBoost = isXpBoostActive(userObj);
+
+  let title = "CHORE COMPLETE!";
+  let subtext = "Revealed Reward";
+  let mainText = "";
+  let xpEarnedThisAction = 0;
+  const oldXp = userObj.xp || 0;
+
+  if (stats.isChest) {
+    title = "🧰 MYSTERY CHEST OPENED!";
+    const chestRoll = Math.random();
+
+    if (chestRoll < 0.20) {
+      userObj.streakSavers = (userObj.streakSavers || 0) + 1;
+      subtext = "RARE ITEM FOUND!";
+      mainText = "🛡️ +1 Streak Saver";
+    } else if (chestRoll < 0.35) {
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+      userObj.xpBoostUntil = new Date().getTime() + twentyFourHours;
+      subtext = "BUFF ACTIVATED!";
+      mainText = "⚡ 2x XP Boost (24h)";
+    } else if (chestRoll < 0.55) {
+      userObj.inventory['Critter Treat'] = (userObj.inventory['Critter Treat'] || 0) + 1;
+      subtext = "CONSUMABLE DROPPED!";
+      mainText = "🍖 Found +1 Critter Treat!";
+    } else if (chestRoll < 0.70) {
+      userObj.inventory['Suction Boost'] = (userObj.inventory['Suction Boost'] || 0) + 1;
+      subtext = "CONSUMABLE DROPPED!";
+      mainText = "⚡ Found +1 Suction Power-Up!";
+    } else if (chestRoll < 0.80) {
+      subtext = "UNLUCKY!";
+      mainText = "🪨 Lump of Coal (0 XP)";
+    } else {
+      let bonusXp = Math.floor(Math.random() * 51) + 50;
+      if (has2xBoost) bonusXp *= 2;
+      xpEarnedThisAction = bonusXp;
+      userObj.xp = oldXp + bonusXp;
+      subtext = has2xBoost ? "TREASURE FOUND! (2x Boost Active)" : "TREASURE FOUND!";
+      mainText = `✨ +${bonusXp} XP`;
+    }
+  } else {
+    let rawMin = 10, rawMax = 30;
+    if (stats.timeTag === "medium") { rawMin = 30; rawMax = 70; }
+    if (stats.timeTag === "long") { rawMin = 70; rawMax = 120; }
+
+    const rawXpDrop = Math.floor(Math.random() * (rawMax - rawMin + 1)) + rawMin;
+    let totalXpEarned = rawXpDrop + streakBonusXp;
+    if (has2xBoost) totalXpEarned *= 2;
+    
+    xpEarnedThisAction = totalXpEarned;
+    userObj.xp = oldXp + totalXpEarned;
+    title = "🎁 LOOT DROP REVEALED!";
+    subtext = has2xBoost 
+      ? `Base Reward: +${rawXpDrop} XP (2x Boost Applied!)` 
+      : `Base Reward: +${rawXpDrop} XP`;
+    mainText = `+${totalXpEarned} XP`;
+  }
+
+  if (unlockedNewCritter) {
+    subtext = `🎉 NEW CRITTER UNLOCKED: ${affectedCritterName}!`;
+  } else if (leveledUpCritter) {
+    subtext = `⚡ ${affectedCritterName} LEVELED UP!`;
+  }
+
+  const newXp = userObj.xp || 0;
+  const oldLvl = calculateLevel(oldXp).level;
+  const newLvl = calculateLevel(newXp).level;
+
+  await syncUserData(currentUser);
+
+  const logEntry = {
+    taskId: id,
+    name: task.name,
+    date: todayStr,
+    timestamp: new Date().getTime(),
+    completedBy: currentUser,
+    xpEarned: xpEarnedThisAction
+  };
+
+  if (isFirebaseConfigured) {
+    await db.collection('chores').doc(id).update({ lastDone: todayStr, lastDoneBy: currentUser });
+    await db.collection('logs').add(logEntry);
+  } else {
+    task.lastDone = todayStr;
+    task.lastDoneBy = currentUser;
+    completedLogs.push(logEntry);
+    saveLocalData();
+    render();
+  }
+
+  document.getElementById('reward-type-title').innerText = title;
+  document.getElementById('reward-subtext').innerText = subtext;
+  document.getElementById('reward-main-text').innerText = mainText;
+
+  const streakBanner = document.getElementById('streak-banner');
+  if (streakBonusActive && !stats.isChest) {
+    streakBanner.style.display = 'block';
+  } else {
+    streakBanner.style.display = 'none';
+  }
+  
+  const lvlBanner = document.getElementById('level-up-banner');
+  if (newLvl > oldLvl) {
+    document.getElementById('new-lvl-text').innerText = `Lvl ${newLvl}`;
+    lvlBanner.style.display = 'block';
+  } else {
+    lvlBanner.style.display = 'none';
+  }
+
+  document.getElementById('reward-modal').classList.add('active');
+}
 
     function closeRewardModal() {
       document.getElementById('reward-modal').classList.remove('active');
