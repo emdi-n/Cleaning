@@ -158,7 +158,7 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn-header" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i> Ranks</button>
+      <button class="btn-header icon-only" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i> Ranks</button>
       <button class="btn-header icon-only" onclick="openCalendarModal()"><i data-lucide="calendar"></i></button>
       <button class="btn-header icon-only" onclick="openBulkModal()"><i data-lucide="layers"></i></button>
       <button class="btn-header icon-only" onclick="openSingleModal()"><i data-lucide="plus"></i></button>
@@ -608,8 +608,8 @@ const firebaseConfig = {
 
       container.innerHTML = rooms.map(room => {
         const score = roomScores[room];
-        let color = '#10b981';
-        if (score < 70) color = '#f59e0b';
+        let color = '#e8bb6c';
+        if (score < 70) color = '#7cd0a2';
         if (score < 40) color = '#ef4444';
 
         const isActive = selectedRoomFilter === room ? 'active-filter' : '';
