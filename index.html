@@ -195,6 +195,19 @@
     </div>
   </div>
 
+  <!-- ADD THIS OVERALL SCORE CARD RIGHT HERE IN SECTION 2.2 -->
+  <div class="user-card" style="text-align: center;">
+    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+      Overall House Cleanliness
+    </div>
+    <div id="overall-score-display" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-green); margin: 4px 0;">
+      100%
+    </div>
+    <div id="overall-score-status" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">
+      House is in pristine condition!
+    </div>
+  </div>
+
   <!-- Section 2.3: Room Cleanliness Overview Section -->
   <section>
     <div class="section-title"><i data-lucide="home"></i> Room Cleanliness (Tap Room to Filter)</div>
@@ -548,16 +561,36 @@ const firebaseConfig = {
       });
 
       const roomScores = {};
-      Object.keys(roomStats).forEach(room => {
+      let totalScoreSum = 0;
+      const roomKeys = Object.keys(roomStats);
+
+      roomKeys.forEach(room => {
         const avgRatio = roomStats[room].sumOverdueRatio / roomStats[room].total;
         let score = Math.round(100 - (avgRatio - 0.5) * 50);
         if (score > 100) score = 100;
         if (score < 0) score = 0;
         roomScores[room] = score;
+        totalScoreSum += score;
       });
+
+      // Calculate overall house average and update UI
+      const overallScore = roomKeys.length > 0 ? Math.round(totalScoreSum / roomKeys.length) : 100;
+      updateOverallScoreUI(overallScore);
 
       return roomScores;
     }
+
+    function updateOverallScoreUI(score) {
+      const scoreEl = document.getElementById('overall-score-display');
+      const statusEl = document.getElementById('overall-score-status');
+      if (!scoreEl || !statusEl) return;
+      if (score < 40) {
+  scoreEl.style.color = '#ef4444';
+  statusEl.innerText = '⚠️ Critical! Immediate cleaning required.';
+     if (typeof sendDiscordAlert === 'function') sendDiscordAlert(score);
+    }
+
+      scoreEl.innerText = `${score}%`; }
 
     function renderRoomScores(roomScores) {
       const container = document.getElementById('room-scores-list');
@@ -853,6 +886,32 @@ const firebaseConfig = {
       document.getElementById('reward-modal').classList.remove('active');
       updateUserBar();
     }
+
+let lastAlertSentTime = 0;
+
+async function sendDiscordAlert(score) {
+  const now = Date.now();
+  // Cooldown: Maximum 1 alert every 12 hours
+  if (now - lastAlertSentTime < 12 * 60 * 60 * 1000) return;
+
+  // Paste your Discord Webhook URL below
+  const webhookUrl = "https://discord.com/api/webhooks/1544645127769690112/Azhzqw9S6NEfPIagno8T4xgtZrdLSkU1byLvQ9j_m0WxKUl5Acp1B9REjCbhqwzMj8pQ"; 
+
+  try {
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: `🚨 **CleanDeck Alert!**\nOverall house cleanliness has dropped to **${score}%**! Time to complete some tasks`
+      })
+    });
+    lastAlertSentTime = now;
+    console.log("Discord alert sent successfully!");
+  } catch (error) {
+    console.error("Failed to send Discord alert:", error);
+  }
+}
+
 
     /* Section 3.11: Leaderboard Display & Calculation Logic */
     function switchLeaderboardTab(timeframe) {
