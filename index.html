@@ -596,7 +596,7 @@ const firebaseConfig = {
       const scoreEl = document.getElementById('overall-score-display');
       const statusEl = document.getElementById('overall-score-status');
       if (!scoreEl || !statusEl) return;
-      if (score < 40) {
+      if (score < 80) {
   scoreEl.style.color = '#ef4444';
   statusEl.innerText = '⚠️ Critical! Immediate cleaning required.';
      if (typeof sendDiscordAlert === 'function') sendDiscordAlert(score);
@@ -1026,37 +1026,62 @@ async function sendDiscordAlert(score) {
     }
 
     /* Section 3.12: Form Handlers (Single Task, Bulk Add, User Switching) */
-    async function handleSingleSubmit(e) {
-      e.preventDefault();
-      const id = document.getElementById('edit-task-id').value;
-      const name = document.getElementById('task-name').value;
-      const room = document.getElementById('task-room').value || 'General';
-      const timeTag = document.getElementById('task-time').value;
-      const products = document.getElementById('task-products').value;
-      const interval = parseInt(document.getElementById('task-interval').value);
-      const lastDone = document.getElementById('task-lastdone').value;
-      const isHighPriority = document.getElementById('task-priority').checked;
+    /* Section 3.12: Form Handlers */
+async function handleSingleSubmit(e) {
+  e.preventDefault();
 
-      const payload = { name, room, timeTag, products, interval, lastDone, isHighPriority, dependsOnId };
+  const editId = document.getElementById('edit-task-id').value;
+  const name = document.getElementById('task-name').value.trim();
+  const room = document.getElementById('task-room').value;
+  const timeTag = document.getElementById('task-time').value;
+  const products = document.getElementById('task-products').value.trim();
+  const interval = parseInt(document.getElementById('task-interval').value) || 1;
+  const lastDone = document.getElementById('task-lastdone').value || new Date().toISOString().split('T')[0];
+  const isHighPriority = document.getElementById('task-priority').checked;
+  
+  // Safely grab prerequisite ID if field exists
+  const dependSelect = document.getElementById('task-dependson');
+  const dependsOnId = dependSelect ? dependSelect.value : '';
 
-      if (id) {
-        if (isFirebaseConfigured) { 
-          await db.collection('chores').doc(id).update(payload); 
-        } else { 
-          const t = localTasks.find(x => x.id === id); 
-          if (t) Object.assign(t, payload); 
-          saveLocalData(); render(); 
-        }
+  if (!name) return;
+
+  const payload = { 
+    name, 
+    room, 
+    timeTag, 
+    products, 
+    interval, 
+    lastDone, 
+    isHighPriority, 
+    dependsOnId 
+  };
+
+  try {
+    if (isFirebaseConfigured) {
+      if (editId) {
+        await db.collection("tasks").doc(editId).update(payload);
       } else {
-        if (isFirebaseConfigured) { 
-          await db.collection('chores').add(payload); 
-        } else { 
-          localTasks.push({ id: Date.now().toString(), ...payload }); 
-          saveLocalData(); render(); 
-        }
+        payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection("tasks").add(payload);
       }
-      closeModals();
+    } else {
+      if (editId) {
+        const idx = localTasks.findIndex(t => t.id === editId);
+        if (idx !== -1) localTasks[idx] = { ...localTasks[idx], ...payload };
+      } else {
+        payload.id = 'loc_' + Date.now();
+        localTasks.push(payload);
+      }
+      saveLocalTasks();
+      render();
     }
+
+    closeModals();
+  } catch (err) {
+    console.error("Error saving task:", err);
+    alert("Failed to save chore. Check console for details.");
+  }
+}
 
     async function handleBulkSubmit(e) {
       e.preventDefault();
