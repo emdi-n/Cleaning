@@ -875,26 +875,36 @@ let leveledUpCritter = false;
 let affectedCritterName = '';
 
 CRITTER_CATALOG.forEach(critter => {
-  const isMatch = critter.keywords.some(keyword => 
-    productList.some(p => p.includes(keyword)) || task.name.toLowerCase().includes(keyword)
-  );
+        const isMatch = critter.keywords.some(keyword => 
+          productList.some(p => p.includes(keyword)) || task.name.toLowerCase().includes(keyword)
+        );
 
-  if (isMatch) {
-    affectedCritterName = critter.name;
-    if (!userObj.critters[critter.id]) {
-      userObj.critters[critter.id] = { lvl: 1, xp: 0 };
-      unlockedNewCritter = true;
-    } else {
-      const cData = userObj.critters[critter.id];
-      cData.xp += 25;
-      if (cData.xp >= cData.lvl * 50) {
-        cData.lvl += 1;
-        cData.xp = 0;
-        leveledUpCritter = true;
-      }
-    }
-  }
-});
+        if (isMatch) {
+          affectedCritterName = critter.name;
+
+          // 1. Check if critter exists in user's profile
+          if (!userObj.critters[critter.id]) {
+            // UNLOCK NEW CRITTER
+            userObj.critters[critter.id] = { lvl: 1, xp: 0 };
+            unlockedNewCritter = true;
+          } else {
+            // 2. CRITTER ALREADY EXISTS -> SAFELY GAIN XP
+            // Ensure xp and lvl are valid numbers just in case
+            userObj.critters[critter.id].xp = userObj.critters[critter.id].xp || 0;
+            userObj.critters[critter.id].lvl = userObj.critters[critter.id].lvl || 1;
+
+            userObj.critters[critter.id].xp += 25;
+
+            // Level Up Check
+            const xpNeeded = userObj.critters[critter.id].lvl * 50;
+            if (userObj.critters[critter.id].xp >= xpNeeded) {
+              userObj.critters[critter.id].lvl += 1;
+              userObj.critters[critter.id].xp = 0;
+              leveledUpCritter = true;
+            }
+          }
+        }
+      });
 
       if (userObj.lastActiveDate !== todayStr) {
         if (!userObj.lastActiveDate) {
