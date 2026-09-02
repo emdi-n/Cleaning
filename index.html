@@ -195,7 +195,20 @@
     </div>
   </div>
 
-  <!-- ADD THIS OVERALL SCORE CARD RIGHT HERE IN SECTION 2.2 -->
+  <!-- Critter Carousel Section -->
+<div class="critter-carousel-wrapper" style="margin-top: 15px; margin-bottom: 24px; background: #ffffff; padding: 12px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <span style="font-size: 0.85rem; font-weight: bold; color: #374151;">🐾 CLEANING CRITTERS</span>
+    <span style="font-size: 0.75rem; color: #6b7280;">Scroll ➔</span>
+  </div>
+  
+  <!-- Horizontal Scrolling Container -->
+  <div id="critter-carousel" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scroll-behavior: smooth;">
+    <!-- Cards will render here dynamically -->
+  </div>
+</div>
+
+  <!-- OVERALL SCORE CARD -->
   <div class="user-card" style="text-align: center;">
     <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
       Overall House Cleanliness
@@ -437,6 +450,39 @@ const firebaseConfig = {
     let appUsers = JSON.parse(localStorage.getItem('cleanDeckUsers') || '{}');
     let selectedRoomFilter = null;
     let activeLeaderboardTab = 'week';
+
+    // Critter Master Catalog
+const CRITTER_CATALOG = [
+  { id: 'dyson', name: 'Dysor', icon: '🌀', keywords: ['dyson', 'hoover', 'vacuum'], baseAtk: 15 },
+  { id: 'cloth', name: 'Clothik', icon: '🧼', keywords: ['cloth', 'microfiber', 'rag'], baseAtk: 10 },
+  { id: 'spray', name: 'Spraytron', icon: '🧴', keywords: ['spray', 'cleaner', 'multipurpose spray'], baseAtk: 12 },
+  { id: 'mop',   name: 'Moppy', icon: '🧹', keywords: ['mop', 'bucket'], baseAtk: 11 },
+  { id: 'sponge', name: 'Spongey', icon: '🧽', keywords: ['sponge', 'scrubber'], baseAtk: 8 }
+];
+
+// Boss State
+let bossState = JSON.parse(localStorage.getItem('cleanDeckBoss') || '{"hp": 500, "maxHp": 500}');
+
+function initUserData(username) {
+  if (!appUsers[username]) {
+    appUsers[username] = { 
+      xp: 0, 
+      streak: 0, 
+      streakSavers: 0, 
+      lastActiveDate: null, 
+      xpBoostUntil: null,
+      critters: {},   // Stores unlocked critters: { dyson: { lvl: 1, xp: 0 } }
+      inventory: {}  // Stores dropped consumables: { 'Suction Boost': 1 }
+    };
+  } else {
+    appUsers[username].xp = appUsers[username].xp || 0;
+    appUsers[username].streak = appUsers[username].streak || 0;
+    appUsers[username].streakSavers = appUsers[username].streakSavers || 0;
+    appUsers[username].xpBoostUntil = appUsers[username].xpBoostUntil || null;
+    appUsers[username].critters = appUsers[username].critters || {};
+    appUsers[username].inventory = appUsers[username].inventory || {};
+  }
+}
     
     function initUserData(username) {
       if (!appUsers[username]) {
@@ -542,6 +588,7 @@ const firebaseConfig = {
       } else {
         boostBadge.style.display = 'none';
       }
+      renderCritterCatalog();
     }
 
     /* Section 3.6: Room Score Calculations & Filtering */
@@ -608,9 +655,9 @@ const firebaseConfig = {
 
       container.innerHTML = rooms.map(room => {
         const score = roomScores[room];
-        let color = '#e8bb6c';
-        if (score < 70) color = '#7cd0a2';
-        if (score < 40) color = '#ef4444';
+        let color = '#7cd0a2';
+        if (score < 70) color = '#e8bb6c';
+        if (score < 40) color = '#FF7276';
 
         const isActive = selectedRoomFilter === room ? 'active-filter' : '';
 
@@ -717,6 +764,48 @@ const firebaseConfig = {
       lucide.createIcons();
     }
 
+    function renderCritterCatalog() {
+  const userObj = appUsers[currentUser] || {};
+  const userCritters = userObj.critters || {};
+  const container = document.getElementById('critter-carousel');
+  
+  if (!container) return;
+
+  container.innerHTML = CRITTER_CATALOG.map(critter => {
+    const unlocked = userCritters[critter.id];
+
+    if (unlocked) {
+      const currentXp = unlocked.xp || 0;
+      const targetXp = unlocked.lvl * 50;
+      const pct = Math.min(100, Math.floor((currentXp / targetXp) * 100));
+
+      return `
+        <div style="flex: 0 0 110px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; text-align: center; background: #fff;">
+          <div style="font-size: 2.2rem; line-height: 1.2;">${critter.icon}</div>
+          <strong style="display: block; font-size: 0.85rem; margin-top: 4px; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${critter.name}</strong>
+          <span style="font-size: 0.75rem; font-weight: bold; color: #16a34a;">Lvl ${unlocked.lvl}</span>
+          
+          <!-- Critter Level Progress Bar -->
+          <div style="width: 100%; background: #e5e7eb; height: 6px; border-radius: 3px; margin-top: 6px; overflow: hidden;">
+            <div style="width: ${pct}%; background: #22c55e; height: 100%; transition: width 0.3s ease;"></div>
+          </div>
+          <span style="font-size: 0.65rem; color: #9ca3af; display: block; margin-top: 2px;">${currentXp}/${targetXp} XP</span>
+        </div>
+      `;
+    } else {
+      return `
+        <div style="flex: 0 0 110px; border: 1px dashed #d1d5db; border-radius: 8px; padding: 10px; text-align: center; background: #f9fafb; opacity: 0.5;">
+          <div style="font-size: 2.2rem; line-height: 1.2; filter: grayscale(100%);">🔒</div>
+          <strong style="display: block; font-size: 0.85rem; margin-top: 4px; color: #6b7280;">???</strong>
+          
+          <!-- Locked Bar Placeholder -->
+          <div style="width: 100%; background: #d1d5db; height: 6px; border-radius: 3px; margin-top: 12px;"></div>
+        </div>
+      `;
+    }
+  }).join('');
+}
+
     /* Section 3.9: Task UI Rendering Functions */
     function renderTaskList(containerId, tasks) {
       const container = document.getElementById(containerId);
@@ -772,6 +861,34 @@ const firebaseConfig = {
       const roomScores = calculateRoomScores(tasks);
       const stats = calculateTaskStats(task, roomScores);
       const userObj = appUsers[currentUser];
+      const rawProducts = (task.products || '').toLowerCase();
+const productList = rawProducts.split(',').map(p => p.trim());
+
+let unlockedNewCritter = false;
+let leveledUpCritter = false;
+let affectedCritterName = '';
+
+CRITTER_CATALOG.forEach(critter => {
+  const isMatch = critter.keywords.some(keyword => 
+    productList.some(p => p.includes(keyword)) || task.name.toLowerCase().includes(keyword)
+  );
+
+  if (isMatch) {
+    affectedCritterName = critter.name;
+    if (!userObj.critters[critter.id]) {
+      userObj.critters[critter.id] = { lvl: 1, xp: 0 };
+      unlockedNewCritter = true;
+    } else {
+      const cData = userObj.critters[critter.id];
+      cData.xp += 25;
+      if (cData.xp >= cData.lvl * 50) {
+        cData.lvl += 1;
+        cData.xp = 0;
+        leveledUpCritter = true;
+      }
+    }
+  }
+});
 
       if (userObj.lastActiveDate !== todayStr) {
         if (!userObj.lastActiveDate) {
@@ -800,19 +917,36 @@ const firebaseConfig = {
         title = "🧰 MYSTERY CHEST OPENED!";
         const chestRoll = Math.random();
 
-        if (chestRoll < 0.25) {
+        // Ensure user inventory exists
+        if (!userObj.inventory) userObj.inventory = {};
+
+        if (chestRoll < 0.20) {
+          // 20% Chance: Streak Saver
           userObj.streakSavers = (userObj.streakSavers || 0) + 1;
           subtext = "RARE ITEM FOUND!";
           mainText = "🛡️ +1 Streak Saver";
-        } else if (chestRoll < 0.45) {
+        } else if (chestRoll < 0.35) {
+          // 15% Chance: 2x XP Boost
           const twentyFourHours = 24 * 60 * 60 * 1000;
           userObj.xpBoostUntil = new Date().getTime() + twentyFourHours;
           subtext = "BUFF ACTIVATED!";
           mainText = "⚡ 2x XP Boost (24h)";
-        } else if (chestRoll < 0.65) {
+        } else if (chestRoll < 0.55) {
+          // 20% Chance: Consumable Item Drop (Critter Treat)
+          userObj.inventory['Critter Treat'] = (userObj.inventory['Critter Treat'] || 0) + 1;
+          subtext = "CONSUMABLE DROPPED!";
+          mainText = "🍖 Found +1 Critter Treat!";
+        } else if (chestRoll < 0.70) {
+          // 15% Chance: Consumable Item Drop (Suction Boost)
+          userObj.inventory['Suction Boost'] = (userObj.inventory['Suction Boost'] || 0) + 1;
+          subtext = "CONSUMABLE DROPPED!";
+          mainText = "⚡ Found +1 Suction Power-Up!";
+        } else if (chestRoll < 0.80) {
+          // 10% Chance: Lump of Coal
           subtext = "UNLUCKY!";
           mainText = "🪨 Lump of Coal (0 XP)";
         } else {
+          // 20% Chance: Raw Bonus XP Drop
           let bonusXp = Math.floor(Math.random() * 51) + 50;
           if (has2xBoost) bonusXp *= 2;
           xpEarnedThisAction = bonusXp;
@@ -837,6 +971,12 @@ const firebaseConfig = {
           : `Base Reward: +${rawXpDrop} XP`;
         mainText = `+${totalXpEarned} XP`;
       }
+
+      if (unlockedNewCritter) {
+  subtext = `🎉 NEW CRITTER UNLOCKED: ${affectedCritterName}!`;
+} else if (leveledUpCritter) {
+  subtext = `⚡ ${affectedCritterName} LEVELED UP!`;
+}
 
       const newXp = userObj.xp || 0;
       const oldLvl = calculateLevel(oldXp).level;
@@ -1013,6 +1153,13 @@ async function sendDiscordAlert(score) {
           localTasks.push({ id: Date.now().toString(), ...payload }); 
           saveLocalData(); render(); 
         }
+
+        const userObj = appUsers[currentUser];
+    if (userObj) {
+      userObj.xp = (userObj.xp || 0) + 5;
+      await syncUserData(currentUser);
+      updateUserBar();
+    }
       }
       closeModals();
     }
