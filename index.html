@@ -18,11 +18,11 @@
       --card-bg: #ffffff;
       --text-main: #0f172a;
       --text-muted: #64748b;
-      --primary: #2563eb;
+      --primary: #86a7ee;
       --primary-light: #eff6ff;
-      --accent-amber: #f59e0b;
-      --accent-purple: #8b5cf6;
-      --accent-green: #10b981;
+      --accent-amber: #e8bb6c;
+      --accent-purple: #bfabf0;
+      --accent-green: #7cd0a2;
       --border-color: #e2e8f0;
       --radius: 16px;
       --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
@@ -48,7 +48,7 @@
     .user-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .user-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .level-badge { background: var(--accent-purple); color: white; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; }
-    .boost-badge { background: #f59e0b; color: white; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; display: none; }
+    .boost-badge { background: #e8bb6c; color: white; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; display: none; }
     .user-name { font-weight: 700; font-size: 0.95rem; }
     .rank-title { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
 
@@ -57,7 +57,7 @@
     .stat-pill { background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 8px; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; }
 
     .xp-bar-container { background: #e2e8f0; height: 10px; border-radius: 10px; overflow: hidden; position: relative; margin-top: 8px; }
-    .xp-bar-fill { background: linear-gradient(90deg, #3b82f6, #8b5cf6); height: 100%; width: 0%; transition: width 0.4s ease-in-out; border-radius: 10px; }
+    .xp-bar-fill { background: linear-gradient(90deg, #86a7ee, #bfabf0); height: 100%; width: 0%; transition: width 0.4s ease-in-out; border-radius: 10px; }
     .xp-text { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
 
     /* Section 1.7: Room Cleanliness Scores Grid Styles */
@@ -67,7 +67,7 @@
     .room-card:active { transform: scale(0.97); }
     .room-card.active-filter { border: 2px solid var(--primary); background: var(--primary-light); }
     .room-card-name { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
-    .room-score-val { font-size: 1.1rem; font-weight: 800; margin-top: 2px; }
+    .room-score-val { font-size: 1.1rem; font-weight: 800; margin-top: 2px; color: var(--accent-green)}
 
     /* Section 1.8: Search, Filters & Main Components Styles */
     .controls-container { display: flex; gap: 8px; margin-bottom: 20px; }
@@ -96,7 +96,7 @@
     /* Badges */
     .badge-pill { font-size: 0.7rem; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
     .xp-tag { background: #fef3c7; color: #b45309; }
-    .chest-tag { background: #ede9fe; color: #6d28d9; }
+    .chest-tag { background: #ede9fe; color: #b592ee; }
     .time-tag { background: #f1f5f9; color: #475569; }
 
     .task-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
@@ -190,8 +190,8 @@
 
     <!-- Streaks & Savers Toolbar -->
     <div class="stats-row">
-      <div class="stat-pill" style="color: #d97706;"><span id="user-streak-text">🔥 0 Day Streak</span></div>
-      <div class="stat-pill" style="color: #2563eb;"><span id="user-savers-text">🛡️ 0 Savers</span></div>
+      <div class="stat-pill" style="color: #edaf68;"><span id="user-streak-text">🔥 0 Day Streak</span></div>
+      <div class="stat-pill" style="color: #86a7ee;"><span id="user-savers-text">🛡️ 0 Savers</span></div>
     </div>
   </div>
 
@@ -339,7 +339,12 @@
           <input type="checkbox" id="task-priority" style="width: auto;">
           <label for="task-priority" style="margin-bottom: 0;">★ High Priority</label>
         </div>
-        <button type="submit" class="submit-btn">Save Chore</button>
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button type="submit" class="submit-btn" style="flex: 1;">Save Chore</button>
+          <button type="button" id="modal-delete-btn" class="submit-btn" style="background: #ee9b9b; width: auto; padding: 0 16px; display: none; align-items: center; justify-content: center;">
+            <i data-lucide="trash-2 style="display: block;"></i>
+          </button>
+        </div>
       </form>
     </div>
   </div>
@@ -749,7 +754,6 @@ const firebaseConfig = {
               </div>
               <div class="task-meta">
                 <button class="action-icon-btn" onclick="openEditModal('${t.id}')"><i data-lucide="pencil" style="width:14px;"></i> Edit</button>
-                <button class="action-icon-btn" onclick="deleteTask('${t.id}')"><i data-lucide="trash-2" style="width:14px;"></i> Delete</button>
               </div>
             </div>
             <button class="complete-btn" onclick="completeTask('${t.id}')"><i data-lucide="check"></i> Done</button>
@@ -1046,26 +1050,44 @@ async function sendDiscordAlert(score) {
 
     /* Section 3.13: Modal Controls & Utilities */
     function openEditModal(id) {
-      const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
-      const t = tasks.find(x => x.id === id);
-      if (!t) return;
-      document.getElementById('edit-task-id').value = t.id;
-      document.getElementById('task-name').value = t.name;
-      document.getElementById('task-room').value = t.room || 'General';
-      document.getElementById('task-time').value = t.timeTag || 'medium';
-      document.getElementById('task-products').value = t.products || '';
-      document.getElementById('task-interval').value = t.interval;
-      document.getElementById('task-lastdone').value = t.lastDone;
-      document.getElementById('task-priority').checked = !!t.isHighPriority;
-      document.getElementById('single-modal').classList.add('active');
-    }
+  const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  
+  document.getElementById('edit-task-id').value = t.id;
+  document.getElementById('task-name').value = t.name;
+  document.getElementById('task-room').value = t.room || 'General';
+  document.getElementById('task-time').value = t.timeTag || 'medium';
+  document.getElementById('task-products').value = t.products || '';
+  document.getElementById('task-interval').value = t.interval;
+  document.getElementById('task-lastdone').value = t.lastDone;
+  document.getElementById('task-priority').checked = !!t.isHighPriority;
 
-    function openSingleModal() {
-      document.getElementById('single-form').reset();
-      document.getElementById('edit-task-id').value = '';
-      document.getElementById('task-lastdone').value = new Date().toISOString().split('T')[0];
-      document.getElementById('single-modal').classList.add('active');
-    }
+  // Show delete button and attach click listener
+  const deleteBtn = document.getElementById('modal-delete-btn');
+  if (deleteBtn) {
+    deleteBtn.style.display = 'flex';
+    deleteBtn.onclick = async () => {
+      await deleteTask(t.id);
+      closeModals();
+    };
+  }
+
+  document.getElementById('single-modal').classList.add('active');
+  lucide.createIcons();
+}
+
+function openSingleModal() {
+  document.getElementById('single-form').reset();
+  document.getElementById('edit-task-id').value = '';
+  document.getElementById('task-lastdone').value = new Date().toISOString().split('T')[0];
+
+  // Hide delete button when adding a NEW task
+  const deleteBtn = document.getElementById('modal-delete-btn');
+  if (deleteBtn) deleteBtn.style.display = 'none';
+
+  document.getElementById('single-modal').classList.add('active');
+}
 
     function openBulkModal() {
       document.getElementById('bulk-lastdone').value = new Date().toISOString().split('T')[0];
