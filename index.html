@@ -158,7 +158,7 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn-header icon-only" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i> Ranks</button>
+      <button class="btn-header" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i> Ranks</button>
       <button class="btn-header icon-only" onclick="openCalendarModal()"><i data-lucide="calendar"></i></button>
       <button class="btn-header icon-only" onclick="openBulkModal()"><i data-lucide="layers"></i></button>
       <button class="btn-header icon-only" onclick="openSingleModal()"><i data-lucide="plus"></i></button>
@@ -339,17 +339,10 @@
           <input type="checkbox" id="task-priority" style="width: auto;">
           <label for="task-priority" style="margin-bottom: 0;">★ High Priority</label>
         </div>
-        <div class="form-group">
-          <label>Prerequisite (Must do this first)</label>
-          <select id="task-dependson">
-            <option value="">None (Standalone Task)</option>
-            <!-- Options dynamically populated in JavaScript -->
-          </select>
-        </div>
         <div style="display: flex; gap: 10px; margin-top: 16px;">
           <button type="submit" class="submit-btn" style="flex: 1;">Save Chore</button>
           <button type="button" id="modal-delete-btn" class="submit-btn" style="background: #ee9b9b; width: auto; padding: 0 16px; display: none; align-items: center; justify-content: center;">
-            <i data-lucide="trash-2" style="display: block;"></i>
+            <i data-lucide="trash-2 style="display: block;"></i>
           </button>
         </div>
       </form>
@@ -596,7 +589,7 @@ const firebaseConfig = {
       const scoreEl = document.getElementById('overall-score-display');
       const statusEl = document.getElementById('overall-score-status');
       if (!scoreEl || !statusEl) return;
-      if (score < 80) {
+      if (score < 40) {
   scoreEl.style.color = '#ef4444';
   statusEl.innerText = '⚠️ Critical! Immediate cleaning required.';
      if (typeof sendDiscordAlert === 'function') sendDiscordAlert(score);
@@ -682,39 +675,7 @@ const firebaseConfig = {
         .sort((a, b) => b.finalPriorityScore - a.finalPriorityScore);
     }
 
-    function isTaskUnlocked(task, allTasks) {
-  // 1. If there's no prerequisite assigned, it's always unlocked
-  if (!task.dependsOnId) return true;
-
-  // 2. Find the prerequisite task in your task list
-  const prereqTask = allTasks.find(t => t.id === task.dependsOnId);
-  if (!prereqTask) return true; // If parent task was deleted, unlock this one
-
-  // 3. Parse timestamps for last completed dates
-  const taskLastDone = new Date(task.lastDone || 0).getTime();
-  const prereqLastDone = new Date(prereqTask.lastDone || 0).getTime();
-
-  // Unlock only if the prerequisite was completed MORE RECENTLY than this task
-  return prereqLastDone > taskLastDone;
-}
-
     /* Section 3.8: Main Render Pipeline */
-
-
-// HELPER FUNCTION: Checks if a task's prerequisite is complete
-function isTaskUnlocked(task, allTasks) {
-      if (!task.dependsOnId) return true; // Unlocked if no prerequisite
-
-      const prereqTask = allTasks.find(t => t.id === task.dependsOnId);
-      if (!prereqTask) return true; // Unlocked if parent was deleted
-
-      const taskLastDone = new Date(task.lastDone || 0).getTime();
-      const prereqLastDone = new Date(prereqTask.lastDone || 0).getTime();
-
-      // Only show this task if the prerequisite was completed MORE RECENTLY than this task
-      return prereqLastDone > taskLastDone;
-    }
-
     function render() {
       const tasksToRender = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
       const roomScores = calculateRoomScores(tasksToRender);
@@ -730,8 +691,6 @@ function isTaskUnlocked(task, allTasks) {
       }
 
       let sorted = sortTasks(tasksToRender, roomScores);
-
-      sorted = sorted.filter(t => isTaskUnlocked(t, tasksToRender));
 
       // Apply Room Filter
       if (selectedRoomFilter) {
@@ -1027,57 +986,36 @@ async function sendDiscordAlert(score) {
 
     /* Section 3.12: Form Handlers (Single Task, Bulk Add, User Switching) */
     async function handleSingleSubmit(e) {
-  e.preventDefault();
+      e.preventDefault();
+      const id = document.getElementById('edit-task-id').value;
+      const name = document.getElementById('task-name').value;
+      const room = document.getElementById('task-room').value || 'General';
+      const timeTag = document.getElementById('task-time').value;
+      const products = document.getElementById('task-products').value;
+      const interval = parseInt(document.getElementById('task-interval').value);
+      const lastDone = document.getElementById('task-lastdone').value;
+      const isHighPriority = document.getElementById('task-priority').checked;
 
-  const editId = document.getElementById('edit-task-id').value;
-  const name = document.getElementById('task-name').value.trim();
-  const room = document.getElementById('task-room').value;
-  const timeTag = document.getElementById('task-time').value;
-  const products = document.getElementById('task-products').value.trim();
-  const interval = parseInt(document.getElementById('task-interval').value) || 1;
-  const lastDone = document.getElementById('task-lastdone').value || new Date().toISOString().split('T')[0];
-  const isHighPriority = document.getElementById('task-priority').checked;
-  
-  const dependsOnId = document.getElementById('task-dependson') ? document.getElementById('task-dependson').value : '';
+      const payload = { name, room, timeTag, products, interval, lastDone, isHighPriority };
 
-  if (!name) return;
-
-  const payload = { 
-    name: name, 
-    room: room, 
-    timeTag: timeTag, 
-    products: products, 
-    interval: interval, 
-    lastDone: lastDone, 
-    isHighPriority: isHighPriority, 
-    dependsOnId: dependsOnId 
-  };
-
-  try {
-    if (typeof isFirebaseConfigured !== 'undefined' && isFirebaseConfigured) {
-      if (editId) {
-        await db.collection("tasks").doc(editId).update(payload);
+      if (id) {
+        if (isFirebaseConfigured) { 
+          await db.collection('chores').doc(id).update(payload); 
+        } else { 
+          const t = localTasks.find(x => x.id === id); 
+          if (t) Object.assign(t, payload); 
+          saveLocalData(); render(); 
+        }
       } else {
-        payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        await db.collection("tasks").add(payload);
+        if (isFirebaseConfigured) { 
+          await db.collection('chores').add(payload); 
+        } else { 
+          localTasks.push({ id: Date.now().toString(), ...payload }); 
+          saveLocalData(); render(); 
+        }
       }
-    } else {
-      if (editId) {
-        const idx = localTasks.findIndex(t => t.id === editId);
-        if (idx !== -1) localTasks[idx] = { ...localTasks[idx], ...payload };
-      } else {
-        payload.id = 'loc_' + Date.now();
-        localTasks.push(payload);
-      }
-      saveLocalTasks();
-      render();
+      closeModals();
     }
-
-    closeModals();
-  } catch (err) {
-    console.error("Error saving task:", err);
-  }
-}
 
     async function handleBulkSubmit(e) {
       e.preventDefault();
@@ -1111,20 +1049,7 @@ async function sendDiscordAlert(score) {
     }
 
     /* Section 3.13: Modal Controls & Utilities */
-    function populatePrerequisiteDropdown(currentTaskId = '') {
-  const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
-  const select = document.getElementById('task-dependson');
-  if (!select) return;
-
-  select.innerHTML = '<option value="">None (Standalone Task)</option>';
-  tasks.forEach(t => {
-    if (t.id !== currentTaskId) {
-      select.innerHTML += `<option value="${t.id}">${t.room ? `[${t.room}] ` : ''}${t.name}</option>`;
-    }
-  });
-}
-
-      function openEditModal(id) {
+    function openEditModal(id) {
   const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
   const t = tasks.find(x => x.id === id);
   if (!t) return;
@@ -1137,10 +1062,6 @@ async function sendDiscordAlert(score) {
   document.getElementById('task-interval').value = t.interval;
   document.getElementById('task-lastdone').value = t.lastDone;
   document.getElementById('task-priority').checked = !!t.isHighPriority;
-
-  // Populate options and set saved prerequisite value
-  populatePrerequisiteDropdown(id);
-  document.getElementById('task-dependson').value = t.dependsOnId || '';
 
   // Show delete button and attach click listener
   const deleteBtn = document.getElementById('modal-delete-btn');
@@ -1161,19 +1082,11 @@ function openSingleModal() {
   document.getElementById('edit-task-id').value = '';
   document.getElementById('task-lastdone').value = new Date().toISOString().split('T')[0];
 
-  // Populate options and reset dropdown for new task
-  populatePrerequisiteDropdown();
-  document.getElementById('task-dependson').value = '';
-
   // Hide delete button when adding a NEW task
   const deleteBtn = document.getElementById('modal-delete-btn');
   if (deleteBtn) deleteBtn.style.display = 'none';
 
   document.getElementById('single-modal').classList.add('active');
-}
-
-function closeModals() {
-  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
 }
 
     function openBulkModal() {
