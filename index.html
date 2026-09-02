@@ -355,7 +355,7 @@
         <div style="display: flex; gap: 10px; margin-top: 16px;">
           <button type="submit" class="submit-btn" style="flex: 1;">Save Chore</button>
           <button type="button" id="modal-delete-btn" class="submit-btn" style="background: #ee9b9b; width: auto; padding: 0 16px; display: none; align-items: center; justify-content: center;">
-            <i data-lucide="trash-2 style="display: block;"></i>
+            <i data-lucide="trash-2" style="display: block;"></i>
           </button>
         </div>
       </form>
@@ -859,6 +859,7 @@ function initUserData(username) {
 
     /* Section 3.10: Task Completion & Reward Calculation Logic */
     /* Section 3.10: Task Completion & Reward Calculation Logic */
+/* Section 3.10: Task Completion & Reward Calculation Logic */
 async function completeTask(id) {
   const todayStr = new Date().toISOString().split('T')[0];
   const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
@@ -867,15 +868,12 @@ async function completeTask(id) {
 
   const roomScores = calculateRoomScores(tasks);
   const stats = calculateTaskStats(task, roomScores);
-  
-  // 1. SAFE USER & CRITTER INITIALIZATION
-  const userObj = appUsers[currentUser] = appUsers[currentUser] || {};
-  if (!userObj.critters || typeof userObj.critters !== 'object') {
-    userObj.critters = {};
-  }
-  if (!userObj.inventory || typeof userObj.inventory !== 'object') {
-    userObj.inventory = {};
-  }
+
+  // 1. ENSURE USER PROFILE & CRITTERS MAP ARE SAFE
+  if (!appUsers[currentUser]) appUsers[currentUser] = {};
+  const userObj = appUsers[currentUser];
+  if (!userObj.critters) userObj.critters = {};
+  if (!userObj.inventory) userObj.inventory = {};
 
   const rawProducts = (task.products || '').toLowerCase();
   const productList = rawProducts.split(',').map(p => p.trim());
@@ -884,34 +882,36 @@ async function completeTask(id) {
   let leveledUpCritter = false;
   let affectedCritterName = '';
 
-  // 2. SAFE CRITTER MATCHING & XP AWARDING
+  // 2. SAFE CRITTER CATALOG MATCHING
   if (Array.isArray(CRITTER_CATALOG)) {
     CRITTER_CATALOG.forEach(critter => {
       if (!critter || !critter.id) return;
 
-      const isMatch = (critter.keywords || []).some(keyword => 
-        productList.some(p => p.includes(keyword)) || task.name.toLowerCase().includes(keyword)
+      const keywords = critter.keywords || [];
+      const taskNameLower = (task.name || '').toLowerCase();
+
+      const isMatch = keywords.some(keyword => 
+        productList.some(p => p.includes(keyword)) || taskNameLower.includes(keyword)
       );
 
       if (isMatch) {
         affectedCritterName = critter.name;
         
-        // Check if the user already has this critter unlocked
-        const existingCritter = userObj.critters[critter.id];
-
-        if (!existingCritter) {
+        // Check if user already owns this critter
+        if (!userObj.critters[critter.id]) {
           // UNLOCK
           userObj.critters[critter.id] = { lvl: 1, xp: 0 };
           unlockedNewCritter = true;
         } else {
-          // LEVEL UP / GAIN XP
-          existingCritter.xp = (existingCritter.xp || 0) + 25;
-          existingCritter.lvl = existingCritter.lvl || 1;
+          // GAIN XP & LEVEL UP SAFELY
+          const cData = userObj.critters[critter.id];
+          cData.xp = (cData.xp || 0) + 25;
+          cData.lvl = cData.lvl || 1;
 
-          const xpNeeded = existingCritter.lvl * 50;
-          if (existingCritter.xp >= xpNeeded) {
-            existingCritter.lvl += 1;
-            existingCritter.xp = 0;
+          const xpNeeded = cData.lvl * 50;
+          if (cData.xp >= xpNeeded) {
+            cData.lvl += 1;
+            cData.xp = 0;
             leveledUpCritter = true;
           }
         }
@@ -919,6 +919,7 @@ async function completeTask(id) {
     });
   }
 
+  // 3. STREAK HANDLING
   if (userObj.lastActiveDate !== todayStr) {
     if (!userObj.lastActiveDate) {
       userObj.streak = 1;
@@ -932,7 +933,7 @@ async function completeTask(id) {
     userObj.lastActiveDate = todayStr;
   }
 
-  const streakBonusActive = userObj.streak >= 2;
+  const streakBonusActive = (userObj.streak || 0) >= 2;
   const streakBonusXp = streakBonusActive ? 10 : 0;
   const has2xBoost = isXpBoostActive(userObj);
 
@@ -942,6 +943,7 @@ async function completeTask(id) {
   let xpEarnedThisAction = 0;
   const oldXp = userObj.xp || 0;
 
+  // 4. CHEST / REGULAR REWARD DROPS
   if (stats.isChest) {
     title = "🧰 MYSTERY CHEST OPENED!";
     const chestRoll = Math.random();
