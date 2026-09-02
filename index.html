@@ -158,7 +158,7 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn-header" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i> Ranks</button>
+      <button class="btn-header icon-only" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i> Ranks</button>
       <button class="btn-header icon-only" onclick="openCalendarModal()"><i data-lucide="calendar"></i></button>
       <button class="btn-header icon-only" onclick="openBulkModal()"><i data-lucide="layers"></i></button>
       <button class="btn-header icon-only" onclick="openSingleModal()"><i data-lucide="plus"></i></button>
@@ -338,6 +338,13 @@
         <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
           <input type="checkbox" id="task-priority" style="width: auto;">
           <label for="task-priority" style="margin-bottom: 0;">★ High Priority</label>
+        </div>
+        <div class="form-group">
+          <label>Prerequisite (Must do this first)</label>
+          <select id="task-dependson">
+            <option value="">None (Standalone Task)</option>
+            <!-- Options dynamically populated in JavaScript -->
+          </select>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 16px;">
           <button type="submit" class="submit-btn" style="flex: 1;">Save Chore</button>
@@ -675,7 +682,39 @@ const firebaseConfig = {
         .sort((a, b) => b.finalPriorityScore - a.finalPriorityScore);
     }
 
+    function isTaskUnlocked(task, allTasks) {
+  // 1. If there's no prerequisite assigned, it's always unlocked
+  if (!task.dependsOnId) return true;
+
+  // 2. Find the prerequisite task in your task list
+  const prereqTask = allTasks.find(t => t.id === task.dependsOnId);
+  if (!prereqTask) return true; // If parent task was deleted, unlock this one
+
+  // 3. Parse timestamps for last completed dates
+  const taskLastDone = new Date(task.lastDone || 0).getTime();
+  const prereqLastDone = new Date(prereqTask.lastDone || 0).getTime();
+
+  // Unlock only if the prerequisite was completed MORE RECENTLY than this task
+  return prereqLastDone > taskLastDone;
+}
+
     /* Section 3.8: Main Render Pipeline */
+
+
+// HELPER FUNCTION: Checks if a task's prerequisite is complete
+function isTaskUnlocked(task, allTasks) {
+      if (!task.dependsOnId) return true; // Unlocked if no prerequisite
+
+      const prereqTask = allTasks.find(t => t.id === task.dependsOnId);
+      if (!prereqTask) return true; // Unlocked if parent was deleted
+
+      const taskLastDone = new Date(task.lastDone || 0).getTime();
+      const prereqLastDone = new Date(prereqTask.lastDone || 0).getTime();
+
+      // Only show this task if the prerequisite was completed MORE RECENTLY than this task
+      return prereqLastDone > taskLastDone;
+    }
+
     function render() {
       const tasksToRender = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
       const roomScores = calculateRoomScores(tasksToRender);
@@ -691,6 +730,8 @@ const firebaseConfig = {
       }
 
       let sorted = sortTasks(tasksToRender, roomScores);
+
+      sorted = sorted.filter(t => isTaskUnlocked(t, tasksToRender));
 
       // Apply Room Filter
       if (selectedRoomFilter) {
@@ -996,7 +1037,7 @@ async function sendDiscordAlert(score) {
       const lastDone = document.getElementById('task-lastdone').value;
       const isHighPriority = document.getElementById('task-priority').checked;
 
-      const payload = { name, room, timeTag, products, interval, lastDone, isHighPriority };
+      const payload = { name, room, timeTag, products, interval, lastDone, isHighPriority, dependsOnId };
 
       if (id) {
         if (isFirebaseConfigured) { 
@@ -1049,7 +1090,20 @@ async function sendDiscordAlert(score) {
     }
 
     /* Section 3.13: Modal Controls & Utilities */
-    function openEditModal(id) {
+    function populatePrerequisiteDropdown(currentTaskId = '') {
+  const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
+  const select = document.getElementById('task-dependson');
+  if (!select) return;
+
+  select.innerHTML = '<option value="">None (Standalone Task)</option>';
+  tasks.forEach(t => {
+    if (t.id !== currentTaskId) {
+      select.innerHTML += `<option value="${t.id}">${t.room ? `[${t.room}] ` : ''}${t.name}</option>`;
+    }
+  });
+}
+
+      function openEditModal(id) {
   const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
   const t = tasks.find(x => x.id === id);
   if (!t) return;
@@ -1062,6 +1116,10 @@ async function sendDiscordAlert(score) {
   document.getElementById('task-interval').value = t.interval;
   document.getElementById('task-lastdone').value = t.lastDone;
   document.getElementById('task-priority').checked = !!t.isHighPriority;
+
+  // Populate options and set saved prerequisite value
+  populatePrerequisiteDropdown(id);
+  document.getElementById('task-dependson').value = t.dependsOnId || '';
 
   // Show delete button and attach click listener
   const deleteBtn = document.getElementById('modal-delete-btn');
@@ -1082,11 +1140,19 @@ function openSingleModal() {
   document.getElementById('edit-task-id').value = '';
   document.getElementById('task-lastdone').value = new Date().toISOString().split('T')[0];
 
+  // Populate options and reset dropdown for new task
+  populatePrerequisiteDropdown();
+  document.getElementById('task-dependson').value = '';
+
   // Hide delete button when adding a NEW task
   const deleteBtn = document.getElementById('modal-delete-btn');
   if (deleteBtn) deleteBtn.style.display = 'none';
 
   document.getElementById('single-modal').classList.add('active');
+}
+
+function closeModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
 }
 
     function openBulkModal() {
