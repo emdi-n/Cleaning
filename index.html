@@ -349,7 +349,7 @@
         <div style="display: flex; gap: 10px; margin-top: 16px;">
           <button type="submit" class="submit-btn" style="flex: 1;">Save Chore</button>
           <button type="button" id="modal-delete-btn" class="submit-btn" style="background: #ee9b9b; width: auto; padding: 0 16px; display: none; align-items: center; justify-content: center;">
-            <i data-lucide="trash-2 style="display: block;"></i>
+            <i data-lucide="trash-2" style="display: block;"></i>
           </button>
         </div>
       </form>
@@ -1026,8 +1026,7 @@ async function sendDiscordAlert(score) {
     }
 
     /* Section 3.12: Form Handlers (Single Task, Bulk Add, User Switching) */
-    /* Section 3.12: Form Handlers */
-async function handleSingleSubmit(e) {
+    async function handleSingleSubmit(e) {
   e.preventDefault();
 
   const editId = document.getElementById('edit-task-id').value;
@@ -1039,25 +1038,25 @@ async function handleSingleSubmit(e) {
   const lastDone = document.getElementById('task-lastdone').value || new Date().toISOString().split('T')[0];
   const isHighPriority = document.getElementById('task-priority').checked;
   
-  // Safely grab prerequisite ID if field exists
+  // Safely define dependsOnId
   const dependSelect = document.getElementById('task-dependson');
   const dependsOnId = dependSelect ? dependSelect.value : '';
 
   if (!name) return;
 
   const payload = { 
-    name, 
-    room, 
-    timeTag, 
-    products, 
-    interval, 
-    lastDone, 
-    isHighPriority, 
-    dependsOnId 
+    name: name, 
+    room: room, 
+    timeTag: timeTag, 
+    products: products, 
+    interval: interval, 
+    lastDone: lastDone, 
+    isHighPriority: isHighPriority, 
+    dependsOnId: dependsOnId 
   };
 
   try {
-    if (isFirebaseConfigured) {
+    if (typeof isFirebaseConfigured !== 'undefined' && isFirebaseConfigured) {
       if (editId) {
         await db.collection("tasks").doc(editId).update(payload);
       } else {
@@ -1079,7 +1078,6 @@ async function handleSingleSubmit(e) {
     closeModals();
   } catch (err) {
     console.error("Error saving task:", err);
-    alert("Failed to save chore. Check console for details.");
   }
 }
 
