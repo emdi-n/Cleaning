@@ -1038,9 +1038,7 @@ async function sendDiscordAlert(score) {
   const lastDone = document.getElementById('task-lastdone').value || new Date().toISOString().split('T')[0];
   const isHighPriority = document.getElementById('task-priority').checked;
   
-  // Safely define dependsOnId
-  const dependSelect = document.getElementById('task-dependson');
-  const dependsOnId = dependSelect ? dependSelect.value : '';
+  const dependsOnId = document.getElementById('task-dependson') ? document.getElementById('task-dependson').value : '';
 
   if (!name) return;
 
