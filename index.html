@@ -1,385 +1,385 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!--
+    ============================================================
+    CLEANDECK - index.html  (the STRUCTURE of the page)
+    ============================================================
+    A web page is built from three kinds of file, and each has one job:
+
+      index.html  = WHAT is on the page  (headings, buttons, boxes)   <- you are here
+      style.css   = HOW it looks         (colours, spacing, layout)
+      app.js      = HOW it behaves       (clicks, data, game rules)
+
+    This file only describes the empty "containers". app.js fills most of
+    them with real content (your chores, scores, etc.) while the app runs.
+    Anything with an id="something" is a container JavaScript can find.
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CleanDeck — Shared Chore Tracker</title>
-  
-  <!-- Section 1.1: External Libraries & Fonts -->
+
+  <!-- Fonts: Plus Jakarta Sans for reading, Fredoka (rounded) for big numbers and headings -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide = the little line icons (<i data-lucide="plus"></i>) -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  
-  <style>
-    /* Section 1.2: Design Tokens & CSS Variables */
-    :root {
-      --bg-main: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --primary: #86a7ee;
-      --primary-light: #eff6ff;
-      --accent-amber: #e8bb6c;
-      --accent-purple: #bfabf0;
-      --accent-green: #7cd0a2;
-      --border-color: #e2e8f0;
-      --radius: 16px;
-      --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-    }
 
-    /* Section 1.3: Global & Layout Styles */
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
-    body { background-color: var(--bg-main); color: var(--text-main); padding: 20px 16px 80px 16px; max-width: 500px; margin: 0 auto; min-height: 100vh; }
-    
-    /* Section 1.4: Header & Navigation Styles */
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-top: 8px; }
-    .brand { display: flex; align-items: center; gap: 10px; }
-    .brand-icon { background: var(--primary); color: white; padding: 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-    h1 { font-size: 1.35rem; font-weight: 800; }
-    .tagline { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
-    
-    .header-actions { display: flex; gap: 6px; }
-    .btn-header { background: var(--primary-light); color: var(--primary); border: none; height: 42px; padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-    .btn-header.icon-only { width: 42px; padding: 0; justify-content: center; }
-
-    /* Section 1.5: User Profile, XP & Stats Dashboard Styles */
-    .user-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 14px 16px; border-radius: var(--radius); margin-bottom: 20px; box-shadow: var(--shadow); }
-    .user-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .user-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .level-badge { background: var(--accent-purple); color: white; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; }
-    .boost-badge { background: #e8bb6c; color: white; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; display: none; }
-    .user-name { font-weight: 700; font-size: 0.95rem; }
-    .rank-title { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
-
-    /* Section 1.6: Streaks & Savers Toolbar Styles */
-    .stats-row { display: flex; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
-    .stat-pill { background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 8px; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; }
-
-    .xp-bar-container { background: #e2e8f0; height: 10px; border-radius: 10px; overflow: hidden; position: relative; margin-top: 8px; }
-    .xp-bar-fill { background: linear-gradient(90deg, #86a7ee, #bfabf0); height: 100%; width: 0%; transition: width 0.4s ease-in-out; border-radius: 10px; }
-    .xp-text { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
-
-    /* Section 1.7: Room Cleanliness Scores Grid Styles */
-    .room-scores-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; scrollbar-width: none; }
-    .room-scores-container::-webkit-scrollbar { display: none; }
-    .room-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 12px; min-width: 120px; flex-shrink: 0; box-shadow: var(--shadow); cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
-    .room-card:active { transform: scale(0.97); }
-    .room-card.active-filter { border: 2px solid var(--primary); background: var(--primary-light); }
-    .room-card-name { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
-    .room-score-val { font-size: 1.1rem; font-weight: 800; margin-top: 2px; color: var(--accent-green)}
-
-    /* Section 1.8: Search, Filters & Main Components Styles */
-    .controls-container { display: flex; gap: 8px; margin-bottom: 20px; }
-    .search-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 12px; font-size: 0.85rem; background: var(--card-bg); outline: none; }
-    .search-input:focus { border-color: var(--primary); }
-    .filter-select { padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 12px; font-size: 0.85rem; background: var(--card-bg); outline: none; font-weight: 600; color: var(--text-main); }
-
-    .filter-active-bar { display: flex; justify-content: space-between; align-items: center; background: var(--primary-light); color: var(--primary); padding: 8px 12px; border-radius: 10px; font-size: 0.82rem; font-weight: 700; margin-bottom: 16px; }
-    .clear-filter-btn { background: none; border: none; color: var(--primary); font-weight: 800; cursor: pointer; text-decoration: underline; font-size: 0.8rem; }
-
-    .section-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-    .top-3-container { margin-bottom: 28px; }
-
-    /* Section 1.9: Task Card Components Styles */
-    .task-card { background: var(--card-bg); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-    .task-info { flex: 1; padding-right: 12px; }
-    .task-title-row { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    
-    /* Hover Task Name with Tooltip */
-    .task-name-hover { position: relative; cursor: pointer; text-decoration: underline dotted transparent; transition: text-decoration-color 0.2s ease; }
-    .task-name-hover.has-products { text-decoration-color: var(--text-muted); }
-    .task-name-hover .product-tooltip { visibility: hidden; opacity: 0; width: max-content; max-width: 220px; background-color: #0f172a; color: #fff; text-align: left; border-radius: 8px; padding: 6px 10px; position: absolute; z-index: 100; bottom: 125%; left: 0; transition: opacity 0.2s ease, visibility 0.2s ease; font-size: 0.75rem; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: none; }
-    .task-name-hover .product-tooltip::after { content: ""; position: absolute; top: 100%; left: 12px; border-width: 5px; border-style: solid; border-color: #0f172a transparent transparent transparent; }
-    .task-name-hover:hover .product-tooltip, .task-name-hover:focus-within .product-tooltip { visibility: visible; opacity: 1; }
-
-    /* Badges */
-    .badge-pill { font-size: 0.7rem; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
-    .xp-tag { background: #fef3c7; color: #b45309; }
-    .chest-tag { background: #ede9fe; color: #b592ee; }
-    .time-tag { background: #f1f5f9; color: #475569; }
-
-    .task-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
-
-    .complete-btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .complete-btn:active { transform: scale(0.96); }
-
-    .toggle-all-btn { width: 100%; background: transparent; border: 1px dashed var(--border-color); padding: 12px; border-radius: 12px; color: var(--text-muted); font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
-
-    /* Section 1.10: Modal Windows & Overlays Styles */
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
-    .modal-overlay.active { display: flex; }
-    .modal { background: white; width: 100%; max-width: 500px; border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-
-    /* Leaderboard Tabs */
-    .leaderboard-tabs { display: flex; gap: 6px; margin-bottom: 16px; background: var(--bg-main); padding: 4px; border-radius: 12px; }
-    .tab-btn { flex: 1; border: none; background: transparent; padding: 8px 0; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); border-radius: 8px; cursor: pointer; }
-    .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
-    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; font-size: 0.95rem; background: white; }
-    .form-group textarea { height: 100px; resize: none; }
-
-    .submit-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1rem; cursor: pointer; }
-    .action-icon-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; opacity: 0.8; padding: 2px; display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; }
-    .action-icon-btn:hover { opacity: 1; color: var(--primary); }
-
-    /* Section 1.11: Reward Popup Overlay Animations & Styles */
-    .reward-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 2000; }
-    .reward-overlay.active { display: flex; }
-    .reward-card { background: white; padding: 28px 24px; border-radius: 24px; text-align: center; width: 85%; max-width: 360px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    
-    @keyframes popIn {
-      0% { transform: scale(0.7); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
-    .reward-title { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
-    .reward-subtext { font-size: 0.85rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 8px; }
-    .reward-main { font-size: 2.2rem; font-weight: 800; color: var(--primary); margin-bottom: 12px; }
-    .streak-banner { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; border-radius: 10px; padding: 6px 12px; font-size: 0.8rem; font-weight: 700; margin-bottom: 12px; display: none; }
-    .level-up-banner { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; border-radius: 10px; padding: 8px 12px; font-size: 0.85rem; font-weight: 700; margin-bottom: 16px; display: none; }
-
-    .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color); }
-    .leaderboard-item:last-child { border-bottom: none; }
-  </style>
+  <!-- Our own stylesheet (the file next to this one) -->
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Section 2.1: Navigation Header & Action Buttons -->
-  <header>
-    <div class="brand">
-      <div class="brand-icon"><i data-lucide="sparkles"></i></div>
-      <div>
-        <h1>CleanDeck</h1>
-        <div class="tagline">Shared Chore Tracker</div>
-      </div>
-    </div>
-    <div class="header-actions">
-      <button class="btn-header icon-only" onclick="openLeaderboardModal()"><i data-lucide="trophy"></i></button>
-      <button class="btn-header icon-only" onclick="openCalendarModal()"><i data-lucide="calendar"></i></button>
-      <button class="btn-header icon-only" onclick="openBulkModal()"><i data-lucide="layers"></i></button>
-      <button class="btn-header icon-only" onclick="openSingleModal()"><i data-lucide="plus"></i></button>
-    </div>
-  </header>
+  <!--
+    A NOTE ON BUTTONS: instead of writing onclick="doSomething()" on every button,
+    each button has  data-action="some-name".  One listener in app.js (search for
+    "ACTIONS") watches for clicks and runs the matching function. This is tidier,
+    and it avoids bugs when a chore name contains a quote mark.
+  -->
 
-  <!-- Section 2.2: Active User Dashboard Card -->
-  <div class="user-card">
-    <div class="user-card-top">
-      <div class="user-info">
-        <span class="level-badge" id="user-lvl-badge">Lvl 1</span>
-        <span class="boost-badge" id="user-boost-badge">⚡ 2x XP</span>
+  <div class="app-shell">
+
+    <!-- ===== HEADER: logo + main buttons ===== -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon"><i data-lucide="sparkles"></i></div>
         <div>
-          <div class="user-name" id="current-user-display">Alex</div>
-          <div class="rank-title" id="user-rank-title">Dust Buster</div>
+          <h1>CleanDeck</h1>
+          <div class="tagline">Shared Chore Tracker</div>
         </div>
       </div>
-      <button class="action-icon-btn" onclick="openUserModal()"><i data-lucide="user"></i> Switch</button>
-    </div>
+      <nav class="header-actions" aria-label="Main actions">
+        <!-- .btn-label text is hidden on phones and shown on desktop (see style.css) -->
+        <button class="btn-header" data-action="open-leaderboard" title="Leaderboard" aria-label="Leaderboard">
+          <i data-lucide="trophy"></i><span class="btn-label">Leaderboard</span>
+        </button>
+        <button class="btn-header" data-action="open-calendar" title="History" aria-label="History">
+          <i data-lucide="calendar"></i><span class="btn-label">History</span>
+        </button>
+        <button class="btn-header" data-action="toggle-select-mode" id="select-mode-btn" title="Select several chores" aria-label="Select several chores">
+          <i data-lucide="list-checks"></i><span class="btn-label">Select</span>
+        </button>
+        <button class="btn-header" data-action="open-bulk-add" title="Add many chores" aria-label="Add many chores">
+          <i data-lucide="layers"></i><span class="btn-label">Bulk add</span>
+        </button>
+        <button class="btn-header btn-header-primary" data-action="open-add-task" title="Add a chore" aria-label="Add a chore">
+          <i data-lucide="plus"></i><span class="btn-label">Add chore</span>
+        </button>
+      </nav>
+    </header>
 
-    <!-- XP Bar -->
-    <div class="xp-bar-container">
-      <div class="xp-bar-fill" id="xp-bar-fill"></div>
-    </div>
-    <div class="xp-text">
-      <span id="xp-current-text">0 / 100 XP</span>
-      <span id="xp-total-text">Total: 0 XP</span>
-    </div>
+    <!--
+      PAGE LAYOUT: on a phone the two columns stack (sidebar first, then main).
+      On a desktop they sit side by side. The switch happens in style.css.
+    -->
+    <div class="layout">
 
-    <!-- Streaks & Savers Toolbar -->
-    <div class="stats-row">
-      <div class="stat-pill" style="color: #edaf68;"><span id="user-streak-text">🔥 0 Day Streak</span></div>
-      <div class="stat-pill" style="color: #86a7ee;"><span id="user-savers-text">🛡️ 0 Savers</span></div>
+      <!-- ================= LEFT COLUMN: you & your critters ================= -->
+      <aside class="sidebar">
+
+        <!-- ----- Player card: level, XP, daily goal, streak ----- -->
+        <section class="card user-card">
+          <div class="user-top">
+            <button class="avatar" id="user-avatar" data-action="open-profile" aria-label="Open your profile">?</button>
+            <div class="user-id">
+              <div class="user-name" id="current-user-display">…</div>
+              <div class="rank-title" id="user-rank-title"></div>
+            </div>
+            <span class="level-badge" id="user-lvl-badge">Lvl 1</span>
+          </div>
+
+          <!-- XP progress bar towards the next level -->
+          <div class="xp-bar-container"><div class="xp-bar-fill" id="xp-bar-fill"></div></div>
+          <div class="xp-text">
+            <span id="xp-current-text">0 / 250 XP</span>
+            <span id="xp-total-text">Total: 0 XP</span>
+          </div>
+          <div class="next-rank" id="next-rank-text"></div>
+
+          <!-- Daily goal ring (filled in by app.js) -->
+          <div class="goal-row">
+            <div id="goal-ring"></div>
+            <div class="goal-text">
+              <div class="goal-title" id="goal-title">Daily goal</div>
+              <div class="goal-sub" id="goal-sub"></div>
+            </div>
+          </div>
+
+          <!-- Little stat pills -->
+          <div class="stats-row">
+            <div class="stat-pill" id="user-streak-text">🔥 0 day streak</div>
+            <div class="stat-pill" id="user-savers-text">🛡️ 0 savers</div>
+            <div class="stat-pill stat-boost" id="user-boost-badge" hidden>⚡ 2x XP</div>
+          </div>
+
+          <!-- Only appears when you have an unopened mystery chest -->
+          <button class="chest-ready-btn" id="chest-ready-btn" data-action="open-chest" hidden>
+            🧰 <span id="chest-ready-text">A mystery chest is ready!</span>
+          </button>
+
+          <div class="user-actions">
+            <button class="btn-ghost" data-action="open-profile"><i data-lucide="user"></i> Profile</button>
+            <button class="btn-ghost" data-action="open-user-switch"><i data-lucide="users"></i> Switch user</button>
+          </div>
+        </section>
+
+        <!-- ----- Critter collection ----- -->
+        <section class="card critter-card">
+          <div class="card-title-row">
+            <h2 class="card-title">🐾 Cleaning critters</h2>
+            <span class="hint" id="critter-count"></span>
+          </div>
+          <div id="critter-carousel" class="critter-carousel"><!-- cards drawn by app.js --></div>
+        </section>
+
+        <!-- ----- Weekly activity bar chart ----- -->
+        <section class="card chart-card">
+          <div class="card-title-row">
+            <h2 class="card-title">📊 Household this week</h2>
+            <span class="hint" id="weekly-total"></span>
+          </div>
+          <div id="weekly-chart" class="weekly-chart"><!-- bars drawn by app.js --></div>
+        </section>
+      </aside>
+
+      <!-- ================= RIGHT COLUMN: the chores ================= -->
+      <main class="main-col">
+
+        <!-- ----- House cleanliness ring + room cards ----- -->
+        <section class="card house-card">
+          <div class="house-top">
+            <div id="house-ring"></div>
+            <div class="house-text">
+              <div class="house-label">Overall house cleanliness</div>
+              <div class="house-status" id="overall-score-status">Loading…</div>
+              <div class="house-counts" id="house-counts"></div>
+            </div>
+          </div>
+          <div class="section-title">Rooms <span class="hint">tap a room to filter</span></div>
+          <div class="room-scores-container" id="room-scores-list"></div>
+        </section>
+
+        <!-- ----- Search and filter ----- -->
+        <div class="controls-container">
+          <input type="search" id="search-input" class="search-input" placeholder="🔍 Search chores…" aria-label="Search chores">
+          <select id="time-filter-select" class="filter-select" aria-label="Filter by length">
+            <option value="all">All lengths</option>
+            <option value="short">⚡ Short (&lt;10m)</option>
+            <option value="medium">⏱️ Medium (10-30m)</option>
+            <option value="long">⌛ Long (30m+)</option>
+          </select>
+        </div>
+
+        <!-- Shows only while a room filter is active -->
+        <div id="room-filter-indicator" class="filter-active-bar" hidden>
+          <span>Showing chores in: <strong id="filter-room-name"></strong></span>
+          <button class="clear-filter-btn" data-action="clear-room-filter">Clear filter</button>
+        </div>
+
+        <!-- ----- In progress (hidden when nothing is in progress) ----- -->
+        <section id="in-progress-section" hidden>
+          <div class="section-title"><i data-lucide="play"></i> In progress</div>
+          <div id="in-progress-list" class="task-list"></div>
+        </section>
+
+        <!-- ----- Recommended chores ----- -->
+        <section class="top-3-container">
+          <div class="section-title"><i data-lucide="zap"></i> Recommended chores</div>
+          <div id="top-3-list" class="task-list"></div>
+        </section>
+
+        <!-- ----- Everything else ----- -->
+        <section>
+          <button class="toggle-all-btn" data-action="toggle-all-tasks">
+            <span id="toggle-text">Show all other chores</span>
+            <i data-lucide="chevron-down" id="toggle-icon"></i>
+          </button>
+          <div id="all-tasks-container" hidden>
+            <div class="section-title"><i data-lucide="list"></i> All chores</div>
+            <div id="all-tasks-list" class="task-list"></div>
+          </div>
+        </section>
+
+        <!-- ----- Archived (hidden when there are none) ----- -->
+        <section id="archived-section" hidden>
+          <button class="toggle-all-btn" data-action="toggle-archived">
+            <span id="archived-toggle-text">Show archived jobs</span>
+            <i data-lucide="archive"></i>
+          </button>
+          <div id="archived-container" hidden>
+            <div class="section-title"><i data-lucide="archive"></i> Archived jobs</div>
+            <div id="archived-list" class="task-list"></div>
+          </div>
+        </section>
+      </main>
     </div>
   </div>
 
-  <!-- Critter Carousel Section -->
-<div class="critter-carousel-wrapper" style="margin-top: 15px; margin-bottom: 24px; background: #ffffff; padding: 12px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-    <span style="font-size: 0.85rem; font-weight: bold; color: #374151;">🐾 CLEANING CRITTERS</span>
-    <span style="font-size: 0.75rem; color: #6b7280;">Scroll ➔</span>
-  </div>
-  
-  <!-- Horizontal Scrolling Container -->
-  <div id="critter-carousel" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; scroll-behavior: smooth;">
-    <!-- Cards will render here dynamically -->
-  </div>
-</div>
-
-  <!-- OVERALL SCORE CARD -->
-  <div class="user-card" style="text-align: center;">
-    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
-      Overall House Cleanliness
-    </div>
-    <div id="overall-score-display" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-green); margin: 4px 0;">
-      100%
-    </div>
-    <div id="overall-score-status" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">
-      House is in pristine condition!
-    </div>
+  <!-- Bar that appears at the bottom while "Select" mode is on -->
+  <div class="select-toolbar" id="select-toolbar" hidden>
+    <span class="select-count" id="select-count">0 selected</span>
+    <button class="btn-small" data-action="select-all-visible">Select all</button>
+    <button class="btn-small btn-small-primary" data-action="open-bulk-edit">Edit</button>
+    <button class="btn-small" data-action="bulk-archive">Archive</button>
+    <button class="btn-small btn-small-danger" data-action="bulk-delete">Delete</button>
+    <button class="btn-small" data-action="toggle-select-mode">Done</button>
   </div>
 
-  <!-- Section 2.3: Room Cleanliness Overview Section -->
-  <section>
-    <div class="section-title"><i data-lucide="home"></i> Room Cleanliness (Tap Room to Filter)</div>
-    <div class="room-scores-container" id="room-scores-list"></div>
-  </section>
+  <!--
+    ==========================================================
+    MODALS (pop-up windows). They are hidden until app.js adds
+    the class "active" to them. Each has a dark backdrop
+    (.modal-overlay) and a white panel (.modal).
+    ==========================================================
+  -->
 
-  <!-- Section 2.4: Active Room Filter Banner -->
-  <div id="room-filter-indicator" class="filter-active-bar" style="display: none;">
-    <span>Showing chores in: <strong id="filter-room-name">Kitchen</strong></span>
-    <button class="clear-filter-btn" onclick="clearRoomFilter()">Clear Filter</button>
-  </div>
-
-  <!-- Section 2.5: Search & Filtering Bar -->
-  <div class="controls-container">
-    <input type="text" id="search-input" class="search-input" placeholder="🔍 Search chores..." oninput="render()">
-    <select id="time-filter-select" class="filter-select" onchange="render()">
-      <option value="all">All Lengths</option>
-      <option value="short">⚡ Short (<10m)</option>
-      <option value="medium">⏱️ Medium (10-30m)</option>
-      <option value="long">⌛ Long (30m+)</option>
-      <option value="chest">🧰 Mystery Chests</option>
-    </select>
-  </div>
-
-  <!-- Section 2.6: Top Recommended Tasks Container -->
-  <section class="top-3-container">
-    <div class="section-title"><i data-lucide="zap" style="color: var(--accent-amber);"></i> Recommended Tasks</div>
-    <div id="top-3-list"></div>
-  </section>
-
-  <!-- Section 2.7: All Tasks Accordion & Container -->
-  <section>
-    <button class="toggle-all-btn" onclick="toggleAllTasks()">
-      <span id="toggle-text">Show All Other Tasks</span>
-      <i data-lucide="chevron-down" id="toggle-icon"></i>
-    </button>
-    <div id="all-tasks-container" style="display: none;">
-      <div class="section-title"><i data-lucide="list"></i> All Chores</div>
-      <div id="all-tasks-list"></div>
-    </div>
-  </section>
-
-  <!-- Section 2.8: Reward Pop-up Modal -->
-  <div class="reward-overlay" id="reward-modal">
-    <div class="reward-card">
-      <div class="reward-title" id="reward-type-title">CHORE COMPLETE!</div>
-      <div class="reward-subtext" id="reward-subtext">Revealed Payout</div>
-      <div class="reward-main" id="reward-main-text">+25 XP</div>
-      <div class="streak-banner" id="streak-banner">🔥 +10 Streak Bonus XP Included!</div>
-      <div class="level-up-banner" id="level-up-banner">🎉 LEVEL UP! You reached <span id="new-lvl-text">Lvl 2</span>!</div>
-      <button class="submit-btn" onclick="closeRewardModal()">Collect Reward</button>
-    </div>
-  </div>
-
-  <!-- Section 2.9: Leaderboard Modal -->
+  <!-- ===== Leaderboard ===== -->
   <div class="modal-overlay" id="leaderboard-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 style="font-size: 1.15rem; font-weight: 700;">Household Leaderboard</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
+        <h2>Household leaderboard</h2>
+        <button class="icon-btn" data-action="close-modals" aria-label="Close"><i data-lucide="x"></i></button>
       </div>
-
-      <!-- Leaderboard Timeframe Filter Tabs -->
       <div class="leaderboard-tabs">
-        <button class="tab-btn active" id="tab-week" onclick="switchLeaderboardTab('week')">This Week</button>
-        <button class="tab-btn" id="tab-month" onclick="switchLeaderboardTab('month')">This Month</button>
-        <button class="tab-btn" id="tab-all" onclick="switchLeaderboardTab('all')">All Time</button>
+        <button class="tab-btn active" id="tab-today" data-action="switch-tab" data-tab="today">Today</button>
+        <button class="tab-btn" id="tab-week" data-action="switch-tab" data-tab="week">Week</button>
+        <button class="tab-btn" id="tab-month" data-action="switch-tab" data-tab="month">Month</button>
+        <button class="tab-btn" id="tab-all" data-action="switch-tab" data-tab="all">All time</button>
       </div>
-
       <div id="leaderboard-list"></div>
     </div>
   </div>
 
-  <!-- Section 2.10: User Switcher Modal -->
+  <!-- ===== Switch user / manage users ===== -->
   <div class="modal-overlay" id="user-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 style="font-size: 1.15rem; font-weight: 700;">Who is completing tasks?</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
+        <h2>Who is cleaning?</h2>
+        <button class="icon-btn" data-action="close-modals" aria-label="Close"><i data-lucide="x"></i></button>
       </div>
-      <form onsubmit="handleUserSubmit(event)">
+      <div id="user-list" class="user-list"></div>
+      <form id="user-form">
         <div class="form-group">
-          <label>Your Name</label>
-          <input type="text" id="user-name-input" placeholder="e.g. Alex, Sam, Jordan" required>
+          <label for="user-name-input">Add a new person</label>
+          <input type="text" id="user-name-input" placeholder="e.g. Alex, Sam, Jordan" maxlength="30" autocomplete="off">
         </div>
-        <button type="submit" class="submit-btn">Set User</button>
+        <button type="submit" class="btn-primary">Add &amp; switch</button>
       </form>
+      <button class="btn-ghost cleanup-btn" data-action="cleanup-users">
+        <i data-lucide="user-x"></i> Remove inactive users
+      </button>
+      <p class="hint">Removes people with no XP, or nobody who has done a chore for a long time. You'll see the list and confirm first.</p>
     </div>
   </div>
 
-  <!-- Section 2.11: Single Task Add/Edit Modal -->
+  <!-- ===== Profile ===== -->
+  <div class="modal-overlay" id="profile-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Your profile</h2>
+        <button class="icon-btn" data-action="close-modals" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div id="profile-body"></div>
+    </div>
+  </div>
+
+  <!-- ===== Add / edit ONE chore ===== -->
   <div class="modal-overlay" id="single-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 id="modal-title" style="font-size: 1.15rem; font-weight: 700;">Add New Chore</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
+        <h2 id="modal-title">Add new chore</h2>
+        <button class="icon-btn" data-action="close-modals" aria-label="Close"><i data-lucide="x"></i></button>
       </div>
-      <form id="single-form" onsubmit="handleSingleSubmit(event)">
+      <form id="single-form">
         <input type="hidden" id="edit-task-id">
+
         <div class="form-group">
-          <label>Chore Name</label>
-          <input type="text" id="task-name" placeholder="e.g. Vacuum Rugs" required>
+          <label for="task-name">Chore name</label>
+          <input type="text" id="task-name" placeholder="e.g. Vacuum rugs" required>
         </div>
+
         <div class="form-group">
-          <label>Room Tag</label>
-          <input type="text" id="task-room" placeholder="e.g. Kitchen, Living Room, Bathroom" required>
+          <label for="task-room">Room</label>
+          <!-- The datalist gives suggestions of rooms you already use, so "Kitchen" and "kitchen" don't become two rooms -->
+          <input type="text" id="task-room" list="room-suggestions" placeholder="e.g. Kitchen, Living room" required>
         </div>
+
         <div class="form-group">
-          <label>Time Required</label>
+          <label for="task-time">Time required</label>
           <select id="task-time">
-            <option value="short">⚡ Short (<10 mins)</option>
+            <option value="short">⚡ Short (&lt;10 mins)</option>
             <option value="medium" selected>⏱️ Medium (10-30 mins)</option>
             <option value="long">⌛ Long (30+ mins)</option>
           </select>
         </div>
+
         <div class="form-group">
-          <label>Products Needed (Comma Separated)</label>
-          <input type="text" id="task-products" placeholder="e.g. Dyson, Cloth, Multipurpose Spray">
+          <label>Equipment needed <span class="hint">tap to select</span></label>
+          <div id="task-equipment-picker" class="equip-picker"></div>
         </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="task-interval">Repeat every (days)</label>
+            <input type="number" id="task-interval" min="1" placeholder="e.g. 14" required>
+          </div>
+          <div class="form-group">
+            <label for="task-lastdone">Last done</label>
+            <input type="date" id="task-lastdone" required>
+          </div>
+        </div>
+
+        <label class="check-row"><input type="checkbox" id="task-priority"> <span>★ High priority</span></label>
+        <label class="check-row"><input type="checkbox" id="task-oneoff"> <span>One-off job <em>(archives itself when done)</em></span></label>
+        <p class="hint" id="oneoff-hint" hidden>For one-off jobs, "repeat every" means how many days you have to finish it.</p>
+
         <div class="form-group">
-          <label>Repeat Frequency (Days)</label>
-          <input type="number" id="task-interval" min="1" placeholder="e.g. 14" required>
+          <label>Linked chores <span class="hint">related jobs you might do together or in order</span></label>
+          <input type="search" id="link-search" class="link-search" placeholder="Filter the list…">
+          <div id="task-link-picker" class="link-picker"></div>
         </div>
-        <div class="form-group">
-          <label>Last Done Date</label>
-          <input type="date" id="task-lastdone" required>
+
+        <!-- XP is only shown here on the edit screen, not on the main page -->
+        <div class="xp-box">
+          <div class="xp-box-main">
+            <span class="xp-box-label">XP reward</span>
+            <strong id="xp-preview">25 XP</strong>
+          </div>
+          <div class="hint" id="xp-preview-note">Worked out from how long it takes and how often it repeats.</div>
+          <label class="xp-override">Custom XP (optional)
+            <input type="number" id="task-xp-override" min="1" max="500" placeholder="Auto">
+          </label>
         </div>
-        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" id="task-priority" style="width: auto;">
-          <label for="task-priority" style="margin-bottom: 0;">★ High Priority</label>
-        </div>
-        <div style="display: flex; gap: 10px; margin-top: 16px;">
-          <button type="submit" class="submit-btn" style="flex: 1;">Save Chore</button>
-          <button type="button" id="modal-delete-btn" class="submit-btn" style="background: #ee9b9b; width: auto; padding: 0 16px; display: none; align-items: center; justify-content: center;">
-            <i data-lucide="trash-2" style="display: block;"></i>
-          </button>
+
+        <div class="form-buttons">
+          <button type="submit" class="btn-primary">Save chore</button>
+          <button type="button" id="modal-archive-btn" class="btn-icon-secondary" data-action="modal-archive" hidden title="Archive this chore" aria-label="Archive this chore"><i data-lucide="archive"></i></button>
+          <button type="button" id="modal-delete-btn" class="btn-icon-danger" data-action="modal-delete" hidden title="Delete this chore" aria-label="Delete this chore"><i data-lucide="trash-2"></i></button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Section 2.12: Bulk Chore Import Modal -->
+  <!-- ===== Bulk ADD ===== -->
   <div class="modal-overlay" id="bulk-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 style="font-size: 1.15rem; font-weight: 700;">Bulk Add Chores</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
+        <h2>Bulk add chores</h2>
+        <button class="icon-btn" data-action="close-modals" aria-label="Close"><i data-lucide="x"></i></button>
       </div>
-      <form onsubmit="handleBulkSubmit(event)">
+      <form id="bulk-form">
         <div class="form-group">
-          <label>List of Chores (One per line)</label>
-          <textarea id="bulk-names" placeholder="Vacuum Rugs&#10;Mop Floors&#10;Wipe Countertops" required></textarea>
+          <label for="bulk-names">Chores (one per line)</label>
+          <textarea id="bulk-names" placeholder="Vacuum rugs&#10;Mop floors&#10;Wipe countertops" required></textarea>
         </div>
         <div class="form-group">
-          <label>Room Tag for All</label>
-          <input type="text" id="bulk-room" placeholder="e.g. General, Kitchen" value="General" required>
+          <label for="bulk-room">Room for all</label>
+          <input type="text" id="bulk-room" list="room-suggestions" placeholder="e.g. General, Kitchen" value="General" required>
         </div>
         <div class="form-group">
-          <label>Time Required for All</label>
+          <label for="bulk-time">Time required for all</label>
           <select id="bulk-time">
             <option value="short">⚡ Short</option>
             <option value="medium" selected>⏱️ Medium</option>
@@ -387,984 +387,121 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Default Frequency (Days)</label>
-          <input type="number" id="bulk-interval" value="14" min="1" required>
+          <label>Equipment for all <span class="hint">optional</span></label>
+          <div id="bulk-add-equipment-picker" class="equip-picker"></div>
         </div>
-        <div class="form-group">
-          <label>Last Done Date for All</label>
-          <input type="date" id="bulk-lastdone" required>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bulk-interval">Repeat every (days)</label>
+            <input type="number" id="bulk-interval" value="14" min="1" required>
+          </div>
+          <div class="form-group">
+            <label for="bulk-lastdone">Last done</label>
+            <input type="date" id="bulk-lastdone" required>
+          </div>
         </div>
-        <button type="submit" class="submit-btn">Import Chores</button>
+        <button type="submit" class="btn-primary">Import chores</button>
       </form>
     </div>
   </div>
 
-  <!-- Section 2.13: Calendar Completion History Modal -->
+  <!-- ===== Bulk EDIT (for the chores you ticked in Select mode) ===== -->
+  <div class="modal-overlay" id="bulk-edit-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="bulk-edit-title">Edit selected chores</h2>
+        <button class="icon-btn" data-action="close-modals" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <p class="hint">Only the things you fill in are changed. Everything else stays as it is.</p>
+      <form id="bulk-edit-form">
+        <div class="form-group">
+          <label for="be-room">Room</label>
+          <input type="text" id="be-room" list="room-suggestions" placeholder="(no change)">
+        </div>
+        <div class="form-group">
+          <label for="be-time">Time required</label>
+          <select id="be-time">
+            <option value="">(no change)</option>
+            <option value="short">⚡ Short</option>
+            <option value="medium">⏱️ Medium</option>
+            <option value="long">⌛ Long</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="be-interval">Repeat every (days)</label>
+          <input type="number" id="be-interval" min="1" placeholder="(no change)">
+        </div>
+        <div class="form-group">
+          <label for="be-priority">High priority</label>
+          <select id="be-priority">
+            <option value="">(no change)</option>
+            <option value="yes">★ Make high priority</option>
+            <option value="no">Remove high priority</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Add equipment to all <span class="hint">existing equipment is kept</span></label>
+          <div id="bulk-edit-equipment-picker" class="equip-picker"></div>
+        </div>
+        <label class="check-row"><input type="checkbox" id="be-link"> <span>🔗 Link all selected chores together</span></label>
+        <button type="submit" class="btn-primary">Apply changes</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== History calendar ===== -->
   <div class="modal-overlay" id="calendar-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 style="font-size: 1.15rem; font-weight: 700;">Completion History</h2>
-        <button class="action-icon-btn" onclick="closeModals()"><i data-lucide="x"></i></button>
+        <h2>Completion history</h2>
+        <button class="icon-btn" data-action="close-modals" aria-label="Close"><i data-lucide="x"></i></button>
       </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <button class="action-icon-btn" onclick="changeMonth(-1)"><i data-lucide="chevron-left"></i> Prev</button>
-        <strong id="calendar-month-year" style="font-size: 0.95rem;"></strong>
-        <button class="action-icon-btn" onclick="changeMonth(1)">Next <i data-lucide="chevron-right"></i></button>
+      <div class="cal-nav">
+        <button class="action-icon-btn" data-action="calendar-prev"><i data-lucide="chevron-left"></i> Prev</button>
+        <strong id="calendar-month-year"></strong>
+        <button class="action-icon-btn" data-action="calendar-next">Next <i data-lucide="chevron-right"></i></button>
       </div>
-      <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 0.8rem; margin-bottom: 12px;"></div>
-      <div id="day-log-container" style="border-top: 1px solid var(--border-color); padding-top: 12px;">
-        <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;" id="selected-date-title">Select a day to view history</div>
-        <div id="selected-date-tasks" style="font-size: 0.82rem; color: var(--text-muted);"></div>
+      <div id="calendar-grid" class="calendar-grid"></div>
+      <div class="day-log">
+        <div class="day-log-title" id="selected-date-title">Select a day to view history</div>
+        <div id="selected-date-tasks" class="day-log-body"></div>
       </div>
     </div>
   </div>
 
-  <!-- Section 3.1: Firebase SDK Import Scripts -->
+  <!-- ===== Reward pop-up (after finishing a chore). Content is built by app.js ===== -->
+  <div class="reward-overlay" id="reward-modal">
+    <div class="reward-card">
+      <div id="reward-body"></div>
+      <div class="reward-buttons" id="reward-buttons"></div>
+    </div>
+  </div>
+
+  <!-- ===== MYSTERY CHEST: pick 1 of 3 ===== -->
+  <div class="chest-overlay" id="chest-modal">
+    <div class="chest-rays"></div>
+    <div class="chest-stage">
+      <h2 id="chest-title">Pick a chest!</h2>
+      <p id="chest-subtitle">Three chests, one choice. Everything is revealed once you pick.</p>
+      <div class="chest-row" id="chest-row"></div>
+      <div class="chest-result" id="chest-result"></div>
+      <button class="btn-primary chest-collect" id="chest-collect-btn" data-action="collect-chest" hidden>Collect</button>
+    </div>
+  </div>
+
+  <!-- Suggestions for the Room text boxes (filled in by app.js) -->
+  <datalist id="room-suggestions"></datalist>
+
+  <!-- Confetti pieces are added here; a small message bar for notices -->
+  <div id="confetti-layer" aria-hidden="true"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <!--
+    SCRIPTS go at the very bottom so the page above exists before the code runs.
+    Order matters: first the libraries (Firebase), then OUR code (app.js).
+  -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
-  <script>
-/* Section 3.2: Firebase & App Initialization Setup */
-const firebaseConfig = {
-  apiKey: "AIzaSyAHgbJIEAEbrZ0kagyPgfo7jdXVmhhIjEY",
-  authDomain: "cleaning-emdi.firebaseapp.com",
-  projectId: "cleaning-emdi",
-  storageBucket: "cleaning-emdi.firebasestorage.app",
-  messagingSenderId: "750406957208",
-  appId: "1:750406957208:web:056ae100e9e1febf6a38ed"
-};
-
-    let db = null;
-    let isFirebaseConfigured = false;
-
-    if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
-      try {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        isFirebaseConfigured = true;
-      } catch (e) { console.error("Firebase failed:", e); }
-    }
-
-    /* Section 3.3: User State Management & Sync Operations */
-    let currentUser = localStorage.getItem('cleanDeckUser') || 'Alex';
-    let appUsers = JSON.parse(localStorage.getItem('cleanDeckUsers') || '{}');
-    let selectedRoomFilter = null;
-    let activeLeaderboardTab = 'week';
-
-    // Critter Master Catalog
-const CRITTER_CATALOG = [
-  { id: 'dyson', name: 'Dust-muncher', Image: "critters/2.png", keywords: ['dyson', 'hoover', 'vacuum'], baseAtk: 15 },
-  { id: 'cloth', name: 'Soggy flaps', Image: "critters/3.png", keywords: ['cloth', 'microfiber', 'rag', 'wipe', 'dishcloth'], baseAtk: 10 },
-  { id: 'spray', name: 'Squirter', Image: "critters/4.png", keywords: ['spray', 'cleaner', 'multipurpose spray'], baseAtk: 12 },
-  { id: 'mop',   name: 'Moppy', Image: "critters/5.png", keywords: ['mop', 'bucket'], baseAtk: 11 },
-  { id: 'sponge', name: 'Spongebob', Image: "critters/6.png", keywords: ['sponge', 'scrubber'], baseAtk: 8 },
-  { id: 'bin', name : 'Sludge-oozer', Image: "critters/7.png", keywords: ['bin', 'trash', 'rubbish'], baseAtk: 10 },
-  { id: 'toilet', name : 'Turd-tugger', Image: "critters/8.png", keywords: ['toilet', 'loo', 'bathroom', 'bleach'], baseAtk: 10},
-  { id: 'duster', name: 'Tickler toes', Image: "critters/1.png", keywords: ['duster', 'damp duster', 'feather duster'], baseAtk: 10},
-  { id: 'bleach', name: 'Burnburn', Image: "critters/9.png", keywords: ['bleach'], baseAtk: 10},
-  { id: 'washing', name: 'Undie-gulp', Image: "critters/10.png", keywords: ['washing machine', 'laundry'], baseAtk: 10},
-  { id: 'dishes', name: 'Gunk-gargler', Image: "critters/11.png", keywords: ['dishwaser', 'dishes', 'washing up'], baseAtk: 10},
-];
-
-// Boss State
-let bossState = JSON.parse(localStorage.getItem('cleanDeckBoss') || '{"hp": 500, "maxHp": 500}');
-
-function initUserData(username) {
-  if (!appUsers[username]) {
-    appUsers[username] = { 
-      xp: 0, 
-      streak: 0, 
-      streakSavers: 0, 
-      lastActiveDate: null, 
-      xpBoostUntil: null,
-      critters: {},   // Stores unlocked critters: { dyson: { lvl: 1, xp: 0 } }
-      inventory: {}  // Stores dropped consumables: { 'Suction Boost': 1 }
-    };
-  } else {
-    appUsers[username].xp = appUsers[username].xp || 0;
-    appUsers[username].streak = appUsers[username].streak || 0;
-    appUsers[username].streakSavers = appUsers[username].streakSavers || 0;
-    appUsers[username].xpBoostUntil = appUsers[username].xpBoostUntil || null;
-    appUsers[username].critters = appUsers[username].critters || {};
-    appUsers[username].inventory = appUsers[username].inventory || {};
-  }
-}
-    
-    function initUserData(username) {
-      if (!appUsers[username]) {
-        appUsers[username] = { xp: 0, streak: 0, streakSavers: 0, lastActiveDate: null, xpBoostUntil: null };
-      } else {
-        appUsers[username].xp = appUsers[username].xp || 0;
-        appUsers[username].streak = appUsers[username].streak || 0;
-        appUsers[username].streakSavers = appUsers[username].streakSavers || 0;
-        appUsers[username].xpBoostUntil = appUsers[username].xpBoostUntil || null;
-      }
-    }
-    initUserData(currentUser);
-
-    async function syncUserData(username) {
-      const userData = appUsers[username];
-      if (!userData) return;
-      if (isFirebaseConfigured) {
-        try {
-          await db.collection('users').doc(username).set(userData, { merge: true });
-        } catch(e) { console.error("Error saving user to Firestore:", e); }
-      }
-      saveLocalData();
-    }
-
-    /* Section 3.4: Local Storage Data Handling & Constants */
-    let localTasks = JSON.parse(localStorage.getItem('cleanDeckLocalTasks') || '[]');
-    let completedLogs = JSON.parse(localStorage.getItem('cleanDeckLogs') || '[]');
-    let currentFirestoreTasks = [];
-    let currentCalDate = new Date();
-
-    const RANKS = [
-      { minLvl: 1, title: "Dust Buster" },
-      { minLvl: 3, title: "Soap Samurai" },
-      { minLvl: 5, title: "Scrub Master" },
-      { minLvl: 10, title: "Sanitation Overlord" }
-    ];
-
-    function saveLocalData() {
-      localStorage.setItem('cleanDeckLocalTasks', JSON.stringify(localTasks));
-      localStorage.setItem('cleanDeckLogs', JSON.stringify(completedLogs));
-      localStorage.setItem('cleanDeckUsers', JSON.stringify(appUsers));
-    }
-
-    /* Section 3.5: Gamification Mechanics (XP, Ranks, Streaks) */
-    function calculateLevel(totalXp) {
-      const xpPerLevel = 100;
-      const level = Math.floor(totalXp / xpPerLevel) + 1;
-      const currentLevelXp = totalXp % xpPerLevel;
-      return { level, currentLevelXp, xpPerLevel };
-    }
-
-    function getRankTitle(level) {
-      let title = RANKS[0].title;
-      for (let r of RANKS) {
-        if (level >= r.minLvl) title = r.title;
-      }
-      return title;
-    }
-
-    function checkDailyStreak(userObj) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (!userObj.lastActiveDate) return;
-
-      const lastDate = new Date(userObj.lastActiveDate);
-      const today = new Date(todayStr);
-      const diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
-
-      if (diffDays > 1) {
-        if (userObj.streakSavers > 0) {
-          userObj.streakSavers -= 1;
-        } else {
-          userObj.streak = 0;
-        }
-      }
-    }
-
-    function isXpBoostActive(userObj) {
-      if (!userObj.xpBoostUntil) return false;
-      return new Date().getTime() < userObj.xpBoostUntil;
-    }
-
-    function updateUserBar() {
-      const userObj = appUsers[currentUser] || { xp: 0, streak: 0, streakSavers: 0, xpBoostUntil: null };
-      checkDailyStreak(userObj);
-
-      const xp = userObj.xp || 0;
-      const { level, currentLevelXp, xpPerLevel } = calculateLevel(xp);
-      const pct = Math.min(100, Math.floor((currentLevelXp / xpPerLevel) * 100));
-
-      document.getElementById('current-user-display').innerText = currentUser;
-      document.getElementById('user-lvl-badge').innerText = `Lvl ${level}`;
-      document.getElementById('user-rank-title').innerText = getRankTitle(level);
-      document.getElementById('xp-bar-fill').style.width = `${pct}%`;
-      document.getElementById('xp-current-text').innerText = `${currentLevelXp} / ${xpPerLevel} XP`;
-      document.getElementById('xp-total-text').innerText = `Total: ${xp} XP`;
-
-      document.getElementById('user-streak-text').innerText = `🔥 ${userObj.streak || 0} Day Streak`;
-      document.getElementById('user-savers-text').innerText = `🛡️ ${userObj.streakSavers || 0} Savers`;
-
-      const boostBadge = document.getElementById('user-boost-badge');
-      if (isXpBoostActive(userObj)) {
-        boostBadge.style.display = 'inline-block';
-      } else {
-        boostBadge.style.display = 'none';
-      }
-      renderCritterCatalog();
-    }
-
-    /* Section 3.6: Room Score Calculations & Filtering */
-    function calculateRoomScores(tasks) {
-      const roomStats = {};
-      const today = new Date(); today.setHours(0,0,0,0);
-
-      tasks.forEach(t => {
-        const room = t.room || "General";
-        if (!roomStats[room]) roomStats[room] = { total: 0, sumOverdueRatio: 0 };
-        
-        let lastDoneDate = t.lastDone ? new Date(t.lastDone) : new Date();
-        if (isNaN(lastDoneDate.getTime())) lastDoneDate = new Date();
-        lastDoneDate.setHours(0,0,0,0);
-
-        const interval = parseInt(t.interval) || 1;
-        const daysElapsed = Math.floor((today - lastDoneDate) / (1000 * 60 * 60 * 24));
-        const overdueRatio = daysElapsed / Math.max(1, interval);
-
-        roomStats[room].total += 1;
-        roomStats[room].sumOverdueRatio += overdueRatio;
-      });
-
-      const roomScores = {};
-      let totalScoreSum = 0;
-      const roomKeys = Object.keys(roomStats);
-
-      roomKeys.forEach(room => {
-        const avgRatio = roomStats[room].sumOverdueRatio / roomStats[room].total;
-        let score = Math.round(100 - (avgRatio - 0.5) * 50);
-        if (score > 100) score = 100;
-        if (score < 0) score = 0;
-        roomScores[room] = score;
-        totalScoreSum += score;
-      });
-
-      // Calculate overall house average and update UI
-      const overallScore = roomKeys.length > 0 ? Math.round(totalScoreSum / roomKeys.length) : 100;
-      updateOverallScoreUI(overallScore);
-
-      return roomScores;
-    }
-
-    function updateOverallScoreUI(score) {
-      const scoreEl = document.getElementById('overall-score-display');
-      const statusEl = document.getElementById('overall-score-status');
-      if (!scoreEl || !statusEl) return;
-      if (score < 40) {
-  scoreEl.style.color = '#ef4444';
-  statusEl.innerText = '⚠️ Critical! Immediate cleaning required.';
-     if (typeof sendDiscordAlert === 'function') sendDiscordAlert(score);
-    }
-
-      scoreEl.innerText = `${score}%`; }
-
-    function renderRoomScores(roomScores) {
-      const container = document.getElementById('room-scores-list');
-      const rooms = Object.keys(roomScores);
-
-      if (rooms.length === 0) {
-        container.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted);">No room data available.</div>`;
-        return;
-      }
-
-      container.innerHTML = rooms.map(room => {
-        const score = roomScores[room];
-        let color = '#7cd0a2';
-        if (score < 70) color = '#e8bb6c';
-        if (score < 40) color = '#FF7276';
-
-        const isActive = selectedRoomFilter === room ? 'active-filter' : '';
-
-        return `
-          <div class="room-card ${isActive}" onclick="filterByRoom('${room}')">
-            <div class="room-card-name">${room}</div>
-            <div class="room-score-val" style="color: ${color};">${score}%</div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function filterByRoom(roomName) {
-      if (selectedRoomFilter === roomName) {
-        selectedRoomFilter = null;
-      } else {
-        selectedRoomFilter = roomName;
-      }
-      render();
-    }
-
-    function clearRoomFilter() {
-      selectedRoomFilter = null;
-      render();
-    }
-
-    /* Section 3.7: Task Metrics, Priority & Sorting Logic */
-    function calculateTaskStats(task, roomScores) {
-      const today = new Date(); today.setHours(0,0,0,0);
-      let lastDoneDate = task.lastDone ? new Date(task.lastDone) : new Date();
-      if (isNaN(lastDoneDate.getTime())) lastDoneDate = new Date();
-      lastDoneDate.setHours(0,0,0,0);
-      
-      const interval = parseInt(task.interval) || 1;
-      const daysElapsed = Math.floor((today - lastDoneDate) / (1000 * 60 * 60 * 24));
-      const overdueRatio = daysElapsed / Math.max(1, interval);
-
-      const room = task.room || "General";
-      const roomCleanliness = roomScores[room] !== undefined ? roomScores[room] : 100;
-      
-      const roomDirtinessWeight = (100 - roomCleanliness) / 100;
-      const finalPriorityScore = overdueRatio + (roomDirtinessWeight * 1.5) + (task.isHighPriority ? 2.0 : 0);
-
-      const timeTag = task.timeTag || "medium";
-      let chestChance = 0.20;
-      if (timeTag === "short") chestChance = 0.10;
-      if (timeTag === "long") chestChance = 0.35;
-
-      let isChest = false;
-      if (task.id) {
-        let charCodeSum = 0;
-        for (let i = 0; i < task.id.length; i++) charCodeSum += task.id.charCodeAt(i);
-        isChest = (charCodeSum % Math.round(1 / chestChance)) === 0;
-      }
-
-      return { ...task, interval, daysElapsed, overdueRatio, finalPriorityScore, roomCleanliness, isChest, timeTag };
-    }
-
-    function sortTasks(tasks, roomScores) {
-      return tasks
-        .map(t => calculateTaskStats(t, roomScores))
-        .sort((a, b) => b.finalPriorityScore - a.finalPriorityScore);
-    }
-
-    /* Section 3.8: Main Render Pipeline */
-    function render() {
-      const tasksToRender = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
-      const roomScores = calculateRoomScores(tasksToRender);
-      renderRoomScores(roomScores);
-
-      // Handle Room Filter Indicator
-      const indicator = document.getElementById('room-filter-indicator');
-      if (selectedRoomFilter) {
-        indicator.style.display = 'flex';
-        document.getElementById('filter-room-name').innerText = selectedRoomFilter;
-      } else {
-        indicator.style.display = 'none';
-      }
-
-      let sorted = sortTasks(tasksToRender, roomScores);
-
-      // Apply Room Filter
-      if (selectedRoomFilter) {
-        sorted = sorted.filter(t => (t.room || 'General') === selectedRoomFilter);
-      }
-
-      // Apply Search Query Filter
-      const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
-      if (searchQuery) {
-        sorted = sorted.filter(t => t.name.toLowerCase().includes(searchQuery));
-      }
-
-      // Apply Time/Reward Filter
-      const timeFilter = document.getElementById('time-filter-select').value;
-      if (timeFilter === 'chest') {
-        sorted = sorted.filter(t => t.isChest);
-      } else if (timeFilter !== 'all') {
-        sorted = sorted.filter(t => t.timeTag === timeFilter);
-      }
-
-      renderTaskList('top-3-list', sorted.slice(0, 3));
-      renderTaskList('all-tasks-list', sorted.slice(3));
-      updateUserBar();
-      lucide.createIcons();
-    }
-
-    function renderCritterCatalog() {
-  const userObj = appUsers[currentUser] || {};
-  const userCritters = userObj.critters || {};
-  const container = document.getElementById('critter-carousel');
-  
-  if (!container) return;
-
-  container.innerHTML = CRITTER_CATALOG.map(critter => {
-    const unlocked = userCritters[critter.id];
-
-    if (unlocked) {
-      const currentXp = unlocked.xp || 0;
-      const targetXp = unlocked.lvl * 50;
-      const pct = Math.min(100, Math.floor((currentXp / targetXp) * 100));
-
-      return `
-        <div style="flex: 0 0 110px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; text-align: center; background: #fff;">
-          <div style="font-size: 2.2rem; line-height: 1.2;">${critter.icon}</div>
-          <strong style="display: block; font-size: 0.85rem; margin-top: 4px; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${critter.name}</strong>
-          <span style="font-size: 0.75rem; font-weight: bold; color: #16a34a;">Lvl ${unlocked.lvl}</span>
-          
-          <!-- Critter Level Progress Bar -->
-          <div style="width: 100%; background: #e5e7eb; height: 6px; border-radius: 3px; margin-top: 6px; overflow: hidden;">
-            <div style="width: ${pct}%; background: #22c55e; height: 100%; transition: width 0.3s ease;"></div>
-          </div>
-          <span style="font-size: 0.65rem; color: #9ca3af; display: block; margin-top: 2px;">${currentXp}/${targetXp} XP</span>
-        </div>
-      `;
-    } else {
-      return `
-        <div style="flex: 0 0 110px; border: 1px dashed #d1d5db; border-radius: 8px; padding: 10px; text-align: center; background: #f9fafb; opacity: 0.5;">
-          <div style="font-size: 2.2rem; line-height: 1.2; filter: grayscale(100%);">🔒</div>
-          <strong style="display: block; font-size: 0.85rem; margin-top: 4px; color: #6b7280;">???</strong>
-          
-          <!-- Locked Bar Placeholder -->
-          <div style="width: 100%; background: #d1d5db; height: 6px; border-radius: 3px; margin-top: 12px;"></div>
-        </div>
-      `;
-    }
-  }).join('');
-}
-
-    /* Section 3.9: Task UI Rendering Functions */
-    function renderTaskList(containerId, tasks) {
-      const container = document.getElementById(containerId);
-      if (!tasks || tasks.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:20px; color:#64748b; font-size:0.9rem;">No chores match active filters!</div>`;
-        return;
-      }
-
-      container.innerHTML = tasks.map(t => {
-        const badgeTag = t.isChest 
-          ? `<span class="badge-pill chest-tag">🧰 Mystery Chest</span>` 
-          : `<span class="badge-pill xp-tag">🎁 XP</span>`;
-
-        const timeLabel = t.timeTag === 'short' ? '⚡ Short' : (t.timeTag === 'long' ? '⌛ Long' : '⏱️ Med');
-
-        const productsList = (t.products || '').split(',').map(p => p.trim()).filter(p => p.length > 0);
-        const hasProducts = productsList.length > 0;
-        
-        // Hover/Tap task name tooltip
-        const taskNameHtml = `
-          <span class="task-name-hover ${hasProducts ? 'has-products' : ''}">
-            ${t.name}
-            ${hasProducts ? `<div class="product-tooltip">🧹 Supplies: ${productsList.join(', ')}</div>` : ''}
-          </span>
-        `;
-
-        return `
-          <div class="task-card">
-            <div class="task-info">
-              <div class="task-title-row">
-                ${t.isHighPriority ? '<span style="color: #f59e0b;">★</span>' : ''}
-                ${taskNameHtml}
-                <span class="badge-pill time-tag">${timeLabel}</span>
-                ${badgeTag}
-              </div>
-              <div class="task-meta">
-                <button class="action-icon-btn" onclick="openEditModal('${t.id}')"><i data-lucide="pencil" style="width:14px;"></i> Edit</button>
-              </div>
-            </div>
-            <button class="complete-btn" onclick="completeTask('${t.id}')"><i data-lucide="check"></i> Done</button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    /* Section 3.10: Task Completion & Reward Calculation Logic */
-    /* Section 3.10: Task Completion & Reward Calculation Logic */
-/* Section 3.10: Task Completion & Reward Calculation Logic */
-async function completeTask(id) {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
-  const task = tasks.find(t => t.id === id);
-  if (!task) return;
-
-  const roomScores = calculateRoomScores(tasks);
-  const stats = calculateTaskStats(task, roomScores);
-
-  // 1. ENSURE USER PROFILE & CRITTERS MAP ARE SAFE
-  if (!appUsers[currentUser]) appUsers[currentUser] = {};
-  const userObj = appUsers[currentUser];
-  if (!userObj.critters) userObj.critters = {};
-  if (!userObj.inventory) userObj.inventory = {};
-
-  const rawProducts = (task.products || '').toLowerCase();
-  const productList = rawProducts.split(',').map(p => p.trim());
-
-  let unlockedNewCritter = false;
-  let leveledUpCritter = false;
-  let affectedCritterName = '';
-
-  // 2. SAFE CRITTER CATALOG MATCHING
-  if (Array.isArray(CRITTER_CATALOG)) {
-    CRITTER_CATALOG.forEach(critter => {
-      if (!critter || !critter.id) return;
-
-      const keywords = critter.keywords || [];
-      const taskNameLower = (task.name || '').toLowerCase();
-
-      const isMatch = keywords.some(keyword => 
-        productList.some(p => p.includes(keyword)) || taskNameLower.includes(keyword)
-      );
-
-      if (isMatch) {
-        affectedCritterName = critter.name;
-        
-        // Check if user already owns this critter
-        if (!userObj.critters[critter.id]) {
-          // UNLOCK
-          userObj.critters[critter.id] = { lvl: 1, xp: 0 };
-          unlockedNewCritter = true;
-        } else {
-          // GAIN XP & LEVEL UP SAFELY
-          const cData = userObj.critters[critter.id];
-          cData.xp = (cData.xp || 0) + 25;
-          cData.lvl = cData.lvl || 1;
-
-          const xpNeeded = cData.lvl * 50;
-          if (cData.xp >= xpNeeded) {
-            cData.lvl += 1;
-            cData.xp = 0;
-            leveledUpCritter = true;
-          }
-        }
-      }
-    });
-  }
-
-  // 3. STREAK HANDLING
-  if (userObj.lastActiveDate !== todayStr) {
-    if (!userObj.lastActiveDate) {
-      userObj.streak = 1;
-    } else {
-      const last = new Date(userObj.lastActiveDate);
-      const curr = new Date(todayStr);
-      const diff = Math.floor((curr - last) / (1000 * 60 * 60 * 24));
-      if (diff === 1) userObj.streak += 1;
-      else if (diff > 1) userObj.streak = 1;
-    }
-    userObj.lastActiveDate = todayStr;
-  }
-
-  const streakBonusActive = (userObj.streak || 0) >= 2;
-  const streakBonusXp = streakBonusActive ? 10 : 0;
-  const has2xBoost = isXpBoostActive(userObj);
-
-  let title = "CHORE COMPLETE!";
-  let subtext = "Revealed Reward";
-  let mainText = "";
-  let xpEarnedThisAction = 0;
-  const oldXp = userObj.xp || 0;
-
-  // 4. CHEST / REGULAR REWARD DROPS
-  if (stats.isChest) {
-    title = "🧰 MYSTERY CHEST OPENED!";
-    const chestRoll = Math.random();
-
-    if (chestRoll < 0.20) {
-      userObj.streakSavers = (userObj.streakSavers || 0) + 1;
-      subtext = "RARE ITEM FOUND!";
-      mainText = "🛡️ +1 Streak Saver";
-    } else if (chestRoll < 0.35) {
-      const twentyFourHours = 24 * 60 * 60 * 1000;
-      userObj.xpBoostUntil = new Date().getTime() + twentyFourHours;
-      subtext = "BUFF ACTIVATED!";
-      mainText = "⚡ 2x XP Boost (24h)";
-    } else if (chestRoll < 0.55) {
-      userObj.inventory['Critter Treat'] = (userObj.inventory['Critter Treat'] || 0) + 1;
-      subtext = "CONSUMABLE DROPPED!";
-      mainText = "🍖 Found +1 Critter Treat!";
-    } else if (chestRoll < 0.70) {
-      userObj.inventory['Suction Boost'] = (userObj.inventory['Suction Boost'] || 0) + 1;
-      subtext = "CONSUMABLE DROPPED!";
-      mainText = "⚡ Found +1 Suction Power-Up!";
-    } else if (chestRoll < 0.80) {
-      subtext = "UNLUCKY!";
-      mainText = "🪨 Lump of Coal (0 XP)";
-    } else {
-      let bonusXp = Math.floor(Math.random() * 51) + 50;
-      if (has2xBoost) bonusXp *= 2;
-      xpEarnedThisAction = bonusXp;
-      userObj.xp = oldXp + bonusXp;
-      subtext = has2xBoost ? "TREASURE FOUND! (2x Boost Active)" : "TREASURE FOUND!";
-      mainText = `✨ +${bonusXp} XP`;
-    }
-  } else {
-    let rawMin = 10, rawMax = 30;
-    if (stats.timeTag === "medium") { rawMin = 30; rawMax = 70; }
-    if (stats.timeTag === "long") { rawMin = 70; rawMax = 120; }
-
-    const rawXpDrop = Math.floor(Math.random() * (rawMax - rawMin + 1)) + rawMin;
-    let totalXpEarned = rawXpDrop + streakBonusXp;
-    if (has2xBoost) totalXpEarned *= 2;
-    
-    xpEarnedThisAction = totalXpEarned;
-    userObj.xp = oldXp + totalXpEarned;
-    title = "🎁 LOOT DROP REVEALED!";
-    subtext = has2xBoost 
-      ? `Base Reward: +${rawXpDrop} XP (2x Boost Applied!)` 
-      : `Base Reward: +${rawXpDrop} XP`;
-    mainText = `+${totalXpEarned} XP`;
-  }
-
-  if (unlockedNewCritter) {
-    subtext = `🎉 NEW CRITTER UNLOCKED: ${affectedCritterName}!`;
-  } else if (leveledUpCritter) {
-    subtext = `⚡ ${affectedCritterName} LEVELED UP!`;
-  }
-
-  const newXp = userObj.xp || 0;
-  const oldLvl = calculateLevel(oldXp).level;
-  const newLvl = calculateLevel(newXp).level;
-
-  await syncUserData(currentUser);
-
-  const logEntry = {
-    taskId: id,
-    name: task.name,
-    date: todayStr,
-    timestamp: new Date().getTime(),
-    completedBy: currentUser,
-    xpEarned: xpEarnedThisAction
-  };
-
-  if (isFirebaseConfigured) {
-    await db.collection('chores').doc(id).update({ lastDone: todayStr, lastDoneBy: currentUser });
-    await db.collection('logs').add(logEntry);
-  } else {
-    task.lastDone = todayStr;
-    task.lastDoneBy = currentUser;
-    completedLogs.push(logEntry);
-    saveLocalData();
-    render();
-  }
-
-  document.getElementById('reward-type-title').innerText = title;
-  document.getElementById('reward-subtext').innerText = subtext;
-  document.getElementById('reward-main-text').innerText = mainText;
-
-  const streakBanner = document.getElementById('streak-banner');
-  if (streakBonusActive && !stats.isChest) {
-    streakBanner.style.display = 'block';
-  } else {
-    streakBanner.style.display = 'none';
-  }
-  
-  const lvlBanner = document.getElementById('level-up-banner');
-  if (newLvl > oldLvl) {
-    document.getElementById('new-lvl-text').innerText = `Lvl ${newLvl}`;
-    lvlBanner.style.display = 'block';
-  } else {
-    lvlBanner.style.display = 'none';
-  }
-
-  document.getElementById('reward-modal').classList.add('active');
-}
-
-    function closeRewardModal() {
-      document.getElementById('reward-modal').classList.remove('active');
-      updateUserBar();
-    }
-
-let lastAlertSentTime = 0;
-
-async function sendDiscordAlert(score) {
-  const now = Date.now();
-  // Cooldown: Maximum 1 alert every 12 hours
-  if (now - lastAlertSentTime < 12 * 60 * 60 * 1000) return;
-
-  // Paste your Discord Webhook URL below
-  const webhookUrl = "https://discord.com/api/webhooks/1544645127769690112/Azhzqw9S6NEfPIagno8T4xgtZrdLSkU1byLvQ9j_m0WxKUl5Acp1B9REjCbhqwzMj8pQ"; 
-
-  try {
-    await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content: `🚨 **CleanDeck Alert!**\nOverall house cleanliness has dropped to **${score}%**! Time to complete some tasks`
-      })
-    });
-    lastAlertSentTime = now;
-    console.log("Discord alert sent successfully!");
-  } catch (error) {
-    console.error("Failed to send Discord alert:", error);
-  }
-}
-
-
-    /* Section 3.11: Leaderboard Display & Calculation Logic */
-    function switchLeaderboardTab(timeframe) {
-      activeLeaderboardTab = timeframe;
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.getElementById(`tab-${timeframe}`).classList.add('active');
-      renderLeaderboard();
-    }
-
-    function openLeaderboardModal() {
-      switchLeaderboardTab('week');
-      document.getElementById('leaderboard-modal').classList.add('active');
-    }
-
-    function renderLeaderboard() {
-      const container = document.getElementById('leaderboard-list');
-      const now = new Date().getTime();
-      const oneDayMs = 24 * 60 * 60 * 1000;
-      
-      let cutoff = 0;
-      if (activeLeaderboardTab === 'week') cutoff = now - (7 * oneDayMs);
-      else if (activeLeaderboardTab === 'month') cutoff = now - (30 * oneDayMs);
-
-      const userXpScores = {};
-      Object.keys(appUsers).forEach(u => { userXpScores[u] = 0; });
-
-      if (activeLeaderboardTab === 'all') {
-        Object.keys(appUsers).forEach(u => { userXpScores[u] = appUsers[u].xp || 0; });
-      } else {
-        completedLogs.forEach(log => {
-          const logTime = log.timestamp || (new Date(log.date).getTime());
-          if (logTime >= cutoff && log.completedBy) {
-            userXpScores[log.completedBy] = (userXpScores[log.completedBy] || 0) + (log.xpEarned || 20);
-          }
-        });
-      }
-
-      const sorted = Object.entries(userXpScores)
-        .map(([name, periodXp]) => {
-          const fullData = appUsers[name] || {};
-          return {
-            name,
-            periodXp,
-            streak: fullData.streak || 0,
-            level: calculateLevel(fullData.xp || 0).level,
-            hasBoost: isXpBoostActive(fullData)
-          };
-        })
-        .sort((a, b) => b.periodXp - a.periodXp);
-
-      if (sorted.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:20px; color:#64748b;">No completed chores in this period.</div>`;
-      } else {
-        container.innerHTML = sorted.map((p, index) => `
-          <div class="leaderboard-item">
-            <div>
-              <strong>#${index + 1} ${p.name}</strong> ${p.hasBoost ? '⚡' : ''}
-              <div style="font-size:0.75rem; color:var(--text-muted);">${getRankTitle(p.level)} • 🔥 ${p.streak}d streak</div>
-            </div>
-            <div style="text-align:right;">
-              <span class="level-badge">Lvl ${p.level}</span>
-              <div style="font-size:0.78rem; color:var(--text-muted); font-weight:700; margin-top:2px;">+${p.periodXp} XP</div>
-            </div>
-          </div>
-        `).join('');
-      }
-    }
-
-    /* Section 3.12: Form Handlers (Single Task, Bulk Add, User Switching) */
-    async function handleSingleSubmit(e) {
-      e.preventDefault();
-      const id = document.getElementById('edit-task-id').value;
-      const name = document.getElementById('task-name').value;
-      const room = document.getElementById('task-room').value || 'General';
-      const timeTag = document.getElementById('task-time').value;
-      const products = document.getElementById('task-products').value;
-      const interval = parseInt(document.getElementById('task-interval').value);
-      const lastDone = document.getElementById('task-lastdone').value;
-      const isHighPriority = document.getElementById('task-priority').checked;
-
-      const payload = { name, room, timeTag, products, interval, lastDone, isHighPriority };
-
-      if (id) {
-        if (isFirebaseConfigured) { 
-          await db.collection('chores').doc(id).update(payload); 
-        } else { 
-          const t = localTasks.find(x => x.id === id); 
-          if (t) Object.assign(t, payload); 
-          saveLocalData(); render(); 
-        }
-      } else {
-        if (isFirebaseConfigured) { 
-          await db.collection('chores').add(payload); 
-        } else { 
-          localTasks.push({ id: Date.now().toString(), ...payload }); 
-          saveLocalData(); render(); 
-        }
-
-        const userObj = appUsers[currentUser];
-    if (userObj) {
-      userObj.xp = (userObj.xp || 0) + 5;
-      await syncUserData(currentUser);
-      updateUserBar();
-    }
-      }
-      closeModals();
-    }
-
-    async function handleBulkSubmit(e) {
-      e.preventDefault();
-      const rawNames = document.getElementById('bulk-names').value;
-      const room = document.getElementById('bulk-room').value || 'General';
-      const timeTag = document.getElementById('bulk-time').value;
-      const interval = parseInt(document.getElementById('bulk-interval').value);
-      const lastDone = document.getElementById('bulk-lastdone').value;
-      const names = rawNames.split('\n').map(n => n.trim()).filter(n => n.length > 0);
-
-      if (isFirebaseConfigured) {
-        const batch = db.batch();
-        names.forEach(name => {
-          const docRef = db.collection('chores').doc();
-          batch.set(docRef, { name, room, timeTag, products: '', interval, lastDone, isHighPriority: false });
-        });
-        await batch.commit();
-      } else {
-        names.forEach(name => {
-          localTasks.push({ id: Math.random().toString(), name, room, timeTag, products: '', interval, lastDone, isHighPriority: false });
-        });
-        saveLocalData(); render();
-      }
-      closeModals();
-    }
-
-    async function deleteTask(id) {
-      if (!confirm("Delete this chore?")) return;
-      if (isFirebaseConfigured) { await db.collection('chores').doc(id).delete(); }
-      else { localTasks = localTasks.filter(t => t.id !== id); saveLocalData(); render(); }
-    }
-
-    /* Section 3.13: Modal Controls & Utilities */
-    function openEditModal(id) {
-  const tasks = isFirebaseConfigured ? currentFirestoreTasks : localTasks;
-  const t = tasks.find(x => x.id === id);
-  if (!t) return;
-  
-  document.getElementById('edit-task-id').value = t.id;
-  document.getElementById('task-name').value = t.name;
-  document.getElementById('task-room').value = t.room || 'General';
-  document.getElementById('task-time').value = t.timeTag || 'medium';
-  document.getElementById('task-products').value = t.products || '';
-  document.getElementById('task-interval').value = t.interval;
-  document.getElementById('task-lastdone').value = t.lastDone;
-  document.getElementById('task-priority').checked = !!t.isHighPriority;
-
-  // Show delete button and attach click listener
-  const deleteBtn = document.getElementById('modal-delete-btn');
-  if (deleteBtn) {
-    deleteBtn.style.display = 'flex';
-    deleteBtn.onclick = async () => {
-      await deleteTask(t.id);
-      closeModals();
-    };
-  }
-
-  document.getElementById('single-modal').classList.add('active');
-  lucide.createIcons();
-}
-
-function openSingleModal() {
-  document.getElementById('single-form').reset();
-  document.getElementById('edit-task-id').value = '';
-  document.getElementById('task-lastdone').value = new Date().toISOString().split('T')[0];
-
-  // Hide delete button when adding a NEW task
-  const deleteBtn = document.getElementById('modal-delete-btn');
-  if (deleteBtn) deleteBtn.style.display = 'none';
-
-  document.getElementById('single-modal').classList.add('active');
-}
-
-    function openBulkModal() {
-      document.getElementById('bulk-lastdone').value = new Date().toISOString().split('T')[0];
-      document.getElementById('bulk-modal').classList.add('active');
-    }
-
-    function openCalendarModal() {
-      renderCalendar();
-      document.getElementById('calendar-modal').classList.add('active');
-    }
-
-    /* Section 3.14: Calendar Grid & Log Viewer Logic */
-    function changeMonth(delta) {
-      currentCalDate.setMonth(currentCalDate.getMonth() + delta);
-      renderCalendar();
-    }
-
-    function renderCalendar() {
-      const year = currentCalDate.getFullYear();
-      const month = currentCalDate.getMonth();
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      document.getElementById('calendar-month-year').innerText = `${monthNames[month]} ${year}`;
-
-      const grid = document.getElementById('calendar-grid');
-      grid.innerHTML = ['S','M','T','W','T','F','S'].map(d => `<div style="font-weight:700; color:var(--text-muted); padding:4px;">${d}</div>`).join('');
-
-      const firstDay = new Date(year, month, 1).getDay();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-      for (let i = 0; i < firstDay; i++) { grid.innerHTML += `<div></div>`; }
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayLogs = completedLogs.filter(l => l.date === dateStr);
-        const hasLogs = dayLogs.length > 0;
-
-        grid.innerHTML += `
-          <div onclick="showDayLogs('${dateStr}')" style="padding: 8px 2px; border-radius: 8px; cursor: pointer; background: ${hasLogs ? 'var(--primary-light)' : 'transparent'}; font-weight: ${hasLogs ? '700' : '400'}; color: ${hasLogs ? 'var(--primary)' : 'inherit'};">
-            ${day}
-            ${hasLogs ? `<div style="font-size: 0.6rem; color: var(--primary);">● ${dayLogs.length}</div>` : ''}
-          </div>
-        `;
-      }
-      lucide.createIcons();
-    }
-
-    function showDayLogs(dateStr) {
-      const dayLogs = completedLogs.filter(l => l.date === dateStr);
-      document.getElementById('selected-date-title').innerText = `Completed on ${dateStr}:`;
-      
-      if (dayLogs.length === 0) {
-        document.getElementById('selected-date-tasks').innerText = "No chores refreshed on this day.";
-      } else {
-        document.getElementById('selected-date-tasks').innerHTML = dayLogs.map(l => `• ${l.name} <span style="color:var(--primary); font-weight:600;">(by ${l.completedBy})</span>`).join('<br>');
-      }
-    }
-
-    function openUserModal() {
-      document.getElementById('user-name-input').value = currentUser;
-      document.getElementById('user-modal').classList.add('active');
-    }
-
-    async function handleUserSubmit(e) {
-      e.preventDefault();
-      const newName = document.getElementById('user-name-input').value.trim();
-      if (newName) {
-        currentUser = newName;
-        localStorage.setItem('cleanDeckUser', currentUser);
-        initUserData(currentUser);
-        await syncUserData(currentUser);
-        updateUserBar();
-      }
-      closeModals();
-    }
-
-    function closeModals() {
-      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
-    }
-
-    /* Section 3.15: Firestore Realtime Listeners & App Lifecycle */
-    if (isFirebaseConfigured) {
-      db.collection('chores').onSnapshot(snapshot => {
-        currentFirestoreTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        render();
-      });
-
-      db.collection('users').onSnapshot(snapshot => {
-        snapshot.docs.forEach(doc => {
-          appUsers[doc.id] = doc.data();
-        });
-        saveLocalData();
-        updateUserBar();
-      });
-
-      db.collection('logs').onSnapshot(snapshot => {
-        completedLogs = snapshot.docs.map(doc => doc.data());
-        saveLocalData();
-      });
-    } else { 
-      render(); 
-    }
-
-    let showAll = false;
-    function toggleAllTasks() {
-      showAll = !showAll;
-      document.getElementById('all-tasks-container').style.display = showAll ? 'block' : 'none';
-      document.getElementById('toggle-text').innerText = showAll ? 'Hide Full List' : 'Show All Other Tasks';
-    }
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
