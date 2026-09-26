@@ -101,10 +101,8 @@ button { cursor: pointer; }
 /* ----- Header ----- */
 .app-header {
   display: flex;
-  flex-wrap: wrap;                 /* on a phone the buttons drop onto their own row */
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 16px;
 }
 .brand { display: flex; align-items: center; gap: 10px; }
@@ -117,38 +115,53 @@ button { cursor: pointer; }
   box-shadow: 0 6px 14px -4px rgba(134, 167, 238, 0.7);
 }
 h1 { font-size: 1.45rem; line-height: 1.1; }
-.tagline { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
 
-.header-actions { display: flex; gap: 6px; width: 100%; }     /* full width row on phones */
-.header-actions .btn-header { flex: 1; }
+/* ----- Tabs -----
+   Only one .tab-panel is visible at a time (app.js toggles "hidden").
+   Each is just a vertical stack of cards. */
+.tab-panel { display: flex; flex-direction: column; gap: 16px; }
+
+.house-top-actions { display: flex; gap: 8px; }
+.house-top-actions .btn-header { flex: 1; }
 .btn-header {
   background: var(--card);
   color: var(--sky-deep);
   border: 1px solid var(--line);
-  height: 42px; min-width: 42px;
-  padding: 0 10px;
+  height: 46px;
+  padding: 0 14px;
   border-radius: 12px;
-  font-weight: 700; font-size: 0.85rem;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-weight: 700; font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
   transition: background 0.15s, transform 0.1s;
 }
 .btn-header:hover { background: var(--sky-soft); }
-.btn-header:active { transform: scale(0.95); }
+.btn-header:active { transform: scale(0.97); }
 .btn-header.is-on { background: var(--sky-deep); color: #fff; border-color: var(--sky-deep); }
 .btn-header-primary { background: var(--sky-deep); color: #fff; border-color: var(--sky-deep); }
 .btn-header-primary:hover { background: #4266b3; }
-.btn-label { display: none; }   /* labels appear on desktop only */
 
-/* ----- Layout -----
-   PHONE: one column. "display: contents" makes the sidebar's cards behave as if
-   they were direct children of .layout, so we can shuffle them with "order":
-   player card, critters, then the chores, and the weekly chart last. */
-.layout { display: flex; flex-direction: column; gap: 16px; }
-.sidebar { display: contents; }
-.user-card { order: 0; }
-.critter-card { order: 1; }
-.main-col { order: 2; min-width: 0; }   /* min-width:0 stops wide children from stretching the column */
-.chart-card { order: 3; }
+/* ----- Bottom nav: the 3 tabs (Me / House / Activity) -----
+   Fixed to the bottom of the screen, like a habit-tracker app. */
+.bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 950;
+  display: flex;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -6px 20px -10px rgba(29, 39, 64, 0.15);
+  padding-bottom: env(safe-area-inset-bottom, 0px);   /* clears the home-bar on phones */
+}
+.nav-btn {
+  flex: 1;
+  background: none; border: none;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 9px 4px 8px;
+  color: var(--muted);
+  font-size: 0.72rem; font-weight: 700;
+}
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn.active { color: var(--sky-deep); }
+.nav-btn.active svg { color: var(--sky-deep); }
 
 
 /* ==========================================================================
@@ -263,6 +276,8 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 .goal-row.goal-met { background: var(--mint-soft); }
 .goal-title { font-weight: 800; font-size: 0.92rem; }
 .goal-sub { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+.goal-select-row { display: block; font-size: 0.72rem; color: var(--muted); font-weight: 600; margin-top: 6px; }
+.goal-select-row select { margin-left: 4px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; font-size: 0.72rem; font-weight: 700; color: var(--ink); background: #fff; }
 
 /* ----- Circular progress rings (drawn as SVG by app.js) ----- */
 .ring { position: relative; display: inline-grid; place-items: center; flex-shrink: 0; }
@@ -309,6 +324,7 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.03); box-shadow: 0 8px 22px -4px rgba(227, 154, 59, 1); }
 }
+.user-switch-btn { width: 100%; margin-top: 12px; }
 
 /* ----- Critters ----- */
 .critter-carousel {
@@ -326,7 +342,10 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
   padding: 10px 8px;
   text-align: center;
   background: var(--card);
+  cursor: pointer;
+  transition: transform 0.12s;
 }
+.critter:active { transform: scale(0.95); }
 .critter.locked { background: var(--bg); border-style: dashed; }
 .critter-img-wrap {
   width: 64px; height: 64px;
@@ -349,22 +368,6 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 .mini-bar { height: 6px; background: #e6ebf6; border-radius: 4px; margin-top: 5px; overflow: hidden; }
 .mini-bar > div { height: 100%; background: var(--mint); border-radius: 4px; transition: width 0.4s; }
 .critter-xp { font-size: 0.65rem; color: var(--muted); display: block; margin-top: 2px; }
-
-/* ----- Weekly chart ----- */
-.weekly-chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding-top: 6px; }
-.wk-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
-.wk-count { font-size: 0.7rem; font-weight: 800; color: var(--muted); }
-.wk-bar-area { flex: 1; width: 100%; display: flex; align-items: flex-end; }
-.wk-bar {
-  width: 100%;
-  min-height: 4px;
-  border-radius: 8px 8px 4px 4px;
-  background: linear-gradient(180deg, var(--lilac), var(--sky));
-  transition: height 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.wk-col.today .wk-bar { background: linear-gradient(180deg, #f7c96b, #e39a3b); }
-.wk-col.today .wk-day { color: var(--honey-deep); }
-.wk-day { font-size: 0.72rem; font-weight: 800; color: var(--muted); }
 
 /* ----- House cleanliness card ----- */
 .house-card { margin-bottom: 16px; }
@@ -697,6 +700,24 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 .rank-step .rs-lvl { margin-left: auto; font-size: 0.72rem; color: var(--muted); }
 .rank-step .rs-reward { font-size: 0.7rem; color: var(--mint-deep); font-weight: 800; }
 
+/* ----- Critter lightbox ----- */
+.critter-lightbox { max-width: 340px; }
+.lightbox-body { text-align: center; }
+.lightbox-img-wrap {
+  width: 160px; height: 160px; margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--lilac-soft);
+  display: grid; place-items: center;
+  overflow: hidden;
+}
+.lightbox-img-wrap.is-locked { background: #e6eaf3; }
+.lightbox-img { width: 100%; height: 100%; object-fit: contain; }
+.lightbox-img-wrap.is-locked .lightbox-img { filter: brightness(0) opacity(0.28); }
+.lightbox-fallback { font-size: 4rem; }
+.lightbox-name { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; }
+.lightbox-lvl { color: var(--mint-deep); font-weight: 800; margin: 4px 0 12px; }
+.lightbox-locked-text { color: var(--muted); font-weight: 600; margin-top: 6px; }
+
 /* ----- Calendar ----- */
 .cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 0.8rem; margin-bottom: 12px; }
@@ -894,61 +915,45 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 
 
 /* ==========================================================================
-   7. DESKTOP / WIDE SCREENS
-   "@media (min-width: 900px)" means: only apply these rules when the browser
-   window is at least 900px wide. On a phone none of this applies.
+   7. WIDER SCREENS
+   The layout stays the SAME single tab-based column on every screen size (that
+   was the point of moving to bottom tabs) - these rules just give it a bit
+   more breathing room and some 2-up grids where there's space for them.
+   "@media (min-width: 700px)" means: only apply these rules when the browser
+   window is at least 700px wide.
    ========================================================================== */
-@media (min-width: 560px) {
-  .app-header { flex-wrap: nowrap; }
-  .header-actions { width: auto; }
-  .header-actions .btn-header { flex: none; }
-}
-
 @media (min-width: 700px) {
   /* Pop-ups are centred cards instead of bottom sheets */
   .modal-overlay { align-items: center; }
   .modal { border-radius: 24px; max-height: 88vh; }
-  .btn-label { display: inline; }
-  .weekly-chart { height: 140px; }
-}
 
-@media (min-width: 900px) {
-  .app-shell { max-width: 1280px; padding: 28px 32px 110px; }
-  .app-header { margin-bottom: 24px; }
-  h1 { font-size: 1.8rem; }
+  .app-shell { max-width: 760px; padding: 28px 24px 110px; }
+  h1 { font-size: 1.7rem; }
 
-  /* Sidebar on the left, chores on the right */
-  .layout {
-    display: grid;
-    grid-template-columns: 350px minmax(0, 1fr);
-    gap: 28px;
-    align-items: start;
-  }
-  .sidebar {
-    display: flex; flex-direction: column; gap: 16px;
-    position: sticky; top: 20px;        /* stays in view while you scroll the chores */
-    max-height: calc(100vh - 40px);
-    overflow-y: auto;
-    padding: 2px 6px 8px 2px;
-    scrollbar-width: thin;
-  }
-  .main-col { order: 0; }
-
-  /* Critters become a tidy 3-column grid instead of a sideways scroll */
-  .critter-carousel { display: grid; grid-template-columns: repeat(3, 1fr); overflow: visible; gap: 8px; }
-  .critter { flex: none; padding: 8px 4px; }
-  .critter-img-wrap { width: 56px; height: 56px; }
+  /* Critters become a tidy grid instead of a sideways scroll */
+  .critter-carousel { display: grid; grid-template-columns: repeat(4, 1fr); overflow: visible; gap: 10px; }
+  .critter { flex: none; }
 
   .house-card { padding: 22px; }
   .room-scores-container { flex-wrap: wrap; overflow-x: visible; }
-  .room-card { min-width: 0; flex: 1 1 130px; max-width: 200px; }
+  .room-card { min-width: 0; flex: 1 1 140px; max-width: 220px; }
 
   .task-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .select-toolbar { bottom: 24px; }
-}
+  .select-toolbar { bottom: 90px; }   /* clears the (still present) bottom nav */
 
-@media (min-width: 1300px) {
-  .layout { grid-template-columns: 380px minmax(0, 1fr); }
+  /* The bottom nav becomes a floating pill instead of a full-width bar */
+  .bottom-nav {
+    left: 50%; right: auto; bottom: 20px;
+    transform: translateX(-50%);
+    width: auto; min-width: 320px;
+    border: 1px solid var(--line); border-top: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 14px 34px -10px rgba(29, 39, 64, 0.3);
+    padding: 4px;
+    gap: 2px;
+  }
+  .nav-btn { flex-direction: row; padding: 10px 18px; border-radius: 14px; gap: 7px; }
+  .nav-btn.active { background: var(--sky-soft); }
 }
 
 /* Respect people who ask their device for less motion */

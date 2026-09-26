@@ -160,9 +160,9 @@ const EQUIPMENT_OPTIONS = [
 /* A little emoji for each room, chosen by looking for a word in the room name. */
 const ROOM_EMOJIS = [
   ['kitchen', '🍳'], ['bath', '🛁'], ['toilet', '🚽'], ['loo', '🚽'], ['bed', '🛏️'],
-  ['living', '🛋️'], ['hall', '🚪'], ['stair', '🪜'], ['garden', '🌿'],
+  ['living', '🛋️'], ['lounge', '🛋️'], ['hall', '🚪'], ['stair', '🪜'], ['garden', '🌿'],
   ['office', '💻'], ['study', '📚'], ['utility', '🧺'], ['laundry', '🧺'], ['garage', '🚗'],
-  ['dining', '🍽️'], ['conservatory', '🪴'], ['general', '🏠']
+  ['dining', '🍽️'], ['kid', '🧸'], ['nursery', '🧸'], ['conservatory', '🪴'], ['general', '🏠']
 ];
 
 
@@ -429,7 +429,8 @@ function startRealtimeListeners() {
   db.collection('logs').onSnapshot(snapshot => {
     completedLogs = snapshot.docs.map(doc => doc.data());
     saveLocalData();
-    renderWeeklyChart();
+    renderActivityTab();   // leaderboard totals and the calendar both depend on logs
+    renderMeTab();          // "chores done" is counted from logs too
   });
 }
 
@@ -470,9 +471,6 @@ function getRank(level) {
   let current = RANKS[0];
   for (const rank of RANKS) { if (level >= rank.level) current = rank; }
   return current;
-}
-function getNextRank(level) {
-  return RANKS.find(rank => rank.level > level) || null;   // null = already at the top
 }
 function getRankTitle(level) { return getRank(level).title; }
 
@@ -892,20 +890,6 @@ function pickRecommended(candidates) {
   return picks;
 }
 
-/* The small green/red hint under a recommended chore.
-   This is where "Complete your daily goal with this chore!" comes from. */
-function getRecommendationHint(task, user) {
-  if (task.recReason === 'rescue') {
-    return { text: '🚨 Long overdue: a good one to tackle today', cls: 'rescue' };
-  }
-  if (user) {
-    const remaining = getDailyGoal(user) - getDailyCount(user);
-    if (remaining === 1) return { text: '🎯 Do this one to complete your daily goal!', cls: '' };
-    if (remaining > 1) return { text: `🎯 Counts towards today's goal (${remaining} to go)`, cls: '' };
-  }
-  return null;
-}
-
 /* Text for the "due" badge on a chore card */
 function dueLabel(t) {
   if (t.doneToday) return '✓ Done today';
@@ -914,13 +898,17 @@ function dueLabel(t) {
   return `Due in ${plural(-t.daysOverdue, 'day')}`;
 }
 
-
 /* ==========================================================================
    PART 7: DRAWING THE SCREEN
    These functions turn data into HTML. The pattern is always:
        1. build a piece of HTML text using a template string
        2. put it inside a container with  element.innerHTML = ...
-   render() at the bottom of this part is the "redraw everything" button.
+
+   TABS: the page has three tab panels (Me / House / Activity) and only one is
+   visible at a time (see switchTab() in Part 11). To keep things simple, the
+   render functions below always update ALL THREE, even the ones currently
+   hidden. That way whichever tab you switch to is instantly up to date,
+   and the app stays small enough that re-drawing all of it is unnoticeable.
    ========================================================================== */
 
 /* ----- 7a. Circular progress ring (SVG) -----
@@ -971,7 +959,7 @@ function scoreMessage(score) {
   return '⚠️ Critical! Time to clean.';
 }
 
-/* ----- 7b. House overview: big ring, counts and room cards ----- */
+/* ----- 7b. House overview: big ring and room cards ----- */
 function renderHouseOverview(analysis) {
   const score = analysis.overallScore;
   setRing('house-ring', {
@@ -979,14 +967,6 @@ function renderHouseOverview(analysis) {
     inner: `<span style="font-size:1.9rem;color:${scoreTextColour(score)}" id="overall-score-display">${score}%</span>`
   });
   document.getElementById('overall-score-status').textContent = scoreMessage(score);
-
-  const { late, dueToday, total } = analysis.counts;
-  const onTrack = Math.max(0, total - late - dueToday);
-  const chips = [];
-  if (late > 0) chips.push(`<span class="count-chip late">${late} overdue</span>`);
-  if (dueToday > 0) chips.push(`<span class="count-chip due">${dueToday} due today</span>`);
-  chips.push(`<span class="count-chip ok">${onTrack} on track</span>`);
-  document.getElementById('house-counts').innerHTML = chips.join('');
 }
 
 function renderRoomScores(analysis) {
@@ -1009,7 +989,6 @@ function renderRoomScores(analysis) {
         </div>
         <div class="room-card-name">${escapeHtml(room)}</div>
         <div class="mini-bar"><div style="width:${info.score}%;background:${scoreColour(info.score)}"></div></div>
-        <div class="room-late">${info.late > 0 ? `${info.late} overdue` : 'All on track'}</div>
       </button>`;
   }).join('');
 }
@@ -1051,7 +1030,7 @@ function taskCardHtml(t, opts = {}) {
   if (t.inProgressBy) badges.push(`<span class="badge-pill progress-tag">🚧 ${escapeHtml(t.inProgressBy)} is on it</span>`);
   if (t.oneOff) badges.push(`<span class="badge-pill oneoff-tag">One-off job</span>`);
 
-  /* Equipment chips (max 3 shown) */
+  /* Equipment chips (max 3 shown) - this is what replaced the old dotted underline */
   const equip = t.equipmentList || [];
   const equipHtml = equip.length
     ? `<div class="equip-chips">${equip.slice(0, 3).map(e => `<span class="equip-mini">${escapeHtml(e)}</span>`).join('')}${equip.length > 3 ? `<span class="equip-mini">+${equip.length - 3}</span>` : ''}</div>`
@@ -1062,8 +1041,6 @@ function taskCardHtml(t, opts = {}) {
   const linkedHtml = linked.length
     ? `<div class="link-chips">🔗 ${linked.slice(0, 2).map(l => escapeHtml(l.name)).join(', ')}${linked.length > 2 ? ` +${linked.length - 2} more` : ''}</div>`
     : '';
-
-  const hintHtml = opts.hint ? `<div class="task-hint ${opts.hint.cls}">${escapeHtml(opts.hint.text)}</div>` : '';
 
   /* Action buttons (hidden in select mode) */
   let actionsHtml = '';
@@ -1100,7 +1077,6 @@ function taskCardHtml(t, opts = {}) {
         <div class="task-badges">${badges.join('')}</div>
         ${equipHtml}
         ${linkedHtml}
-        ${hintHtml}
         <div class="task-actions">${actionsHtml}</div>
       </div>
       ${rightHtml}
@@ -1108,13 +1084,13 @@ function taskCardHtml(t, opts = {}) {
     </div>`;
 }
 
-function renderTaskList(containerId, tasks, emptyHtml, hintFn) {
+function renderTaskList(containerId, tasks, emptyHtml) {
   const container = document.getElementById(containerId);
   if (!tasks || tasks.length === 0) {
     container.innerHTML = emptyHtml || '';
     return;
   }
-  container.innerHTML = tasks.map(t => taskCardHtml(t, { hint: hintFn ? hintFn(t) : null })).join('');
+  container.innerHTML = tasks.map(t => taskCardHtml(t)).join('');
 }
 
 function renderArchived() {
@@ -1130,14 +1106,13 @@ function renderArchived() {
     archived.map(t => taskCardHtml(t, { archived: true })).join('');
 }
 
-/* ----- 7d. The main "redraw everything" function ----- */
-function render() {
+/* ----- 7d. HOUSE TAB: the chore list ----- */
+function renderHouseTab() {
   const allTasks = getAllTasks();
   taskById = new Map(allTasks.map(t => [t.id, t]));
 
   const analysis = analyseTasks(allTasks);
   lastAnalysis = analysis;
-  const user = getUser();
 
   /* If the tapped room no longer exists, forget the filter */
   if (selectedRoomFilter && !analysis.roomInfo[selectedRoomFilter]) selectedRoomFilter = null;
@@ -1179,11 +1154,11 @@ function render() {
   const emptyRecommended = stillLoading
     ? `<div class="empty-state"><strong>Loading your chores…</strong>Just a moment.</div>`
     : filtersActive
-    ? `<div class="empty-state"><strong>No chores match</strong>Try clearing your filters.</div>`
-    : (allTasks.some(t => !t.archived)
-        ? `<div class="empty-state"><strong>🎉 All caught up!</strong>Nothing left to recommend right now.</div>`
-        : `<div class="empty-state"><strong>No chores yet</strong>Tap "Add chore" at the top to create your first one.</div>`);
-  renderTaskList('top-3-list', recommended, emptyRecommended, t => getRecommendationHint(t, user));
+      ? `<div class="empty-state"><strong>No chores match</strong>Try clearing your filters.</div>`
+      : (allTasks.some(t => !t.archived)
+          ? `<div class="empty-state"><strong>🎉 All caught up!</strong>Nothing left to recommend right now.</div>`
+          : `<div class="empty-state"><strong>No chores yet</strong>Tap "Add chore" above to create your first one.</div>`);
+  renderTaskList('top-3-list', recommended, emptyRecommended);
 
   renderTaskList('all-tasks-list', others,
     `<div class="empty-state">No other chores to show.</div>`);
@@ -1192,28 +1167,35 @@ function render() {
     showAllTasks ? 'Hide full list' : `Show all other chores (${others.length})`;
 
   renderArchived();
-  updateUserBar();
-  renderWeeklyChart();
   updateSelectToolbar();
-  refreshIcons();
 
   if (!isFirebaseConfigured || dataReady) maybeSendDiscordAlert(analysis.overallScore);
 }
 
-/* ----- 7e. Player card ----- */
-function updateUserBar() {
+/* ----- 7e. ME TAB: profile, stats, coal and critters ----- */
+
+/* "Chores done" is worked out from the completion history rather than a
+   running counter, so it's correct even for chores completed before this
+   stat existed - the history already had the data, we just weren't reading it. */
+function countChoresDone(username) {
+  return completedLogs.filter(l => isChoreLog(l) && l.completedBy === username).length;
+}
+
+function renderMeTab() {
   const user = getUser();
   const nameEl = document.getElementById('current-user-display');
 
-  if (!user) {   // nobody chosen yet
+  if (!user) {
     nameEl.textContent = 'Choose a user';
     document.getElementById('user-avatar').textContent = '?';
+    document.getElementById('me-stat-grid').innerHTML = '';
+    document.getElementById('coal-card').innerHTML = '';
+    renderCritterCatalog();
     return;
   }
 
   const { level, currentLevelXp, xpForNext } = calculateLevel(user.xp);
   const rank = getRank(level);
-  const nextRank = getNextRank(level);
 
   nameEl.textContent = currentUser;
   document.getElementById('user-avatar').textContent = currentUser.charAt(0).toUpperCase();
@@ -1221,12 +1203,8 @@ function updateUserBar() {
   document.getElementById('user-rank-title').textContent = `${rank.emoji} ${rank.title}`;
   document.getElementById('xp-bar-fill').style.width = `${Math.floor((currentLevelXp / xpForNext) * 100)}%`;
   document.getElementById('xp-current-text').textContent = `${currentLevelXp} / ${xpForNext} XP`;
-  document.getElementById('xp-total-text').textContent = `Total: ${(user.xp || 0).toLocaleString()} XP`;
-  document.getElementById('next-rank-text').textContent = nextRank
-    ? `Next rank: ${nextRank.emoji} ${nextRank.title} at Lvl ${nextRank.level} (${(totalXpToReachLevel(nextRank.level) - user.xp).toLocaleString()} XP to go)`
-    : 'Top rank reached. You are a legend!';
 
-  /* Daily goal ring */
+  /* Daily goal ring + text */
   const goal = getDailyGoal(user);
   const count = getDailyCount(user);
   const met = hasMetGoalToday(user) || count >= goal;
@@ -1236,10 +1214,13 @@ function updateUserBar() {
     inner: `<span style="font-size:1.2rem">${Math.min(count, goal)}<small>of ${goal}</small></span>`
   });
   document.querySelector('.goal-row').classList.toggle('goal-met', met);
-  document.getElementById('goal-title').textContent = met ? 'Daily goal complete! 🎉' : `Daily goal: ${plural(goal - count, 'chore')} to go`;
+  document.getElementById('me-goal-select').value = String(goal);
+  document.getElementById('goal-title').textContent = (user.streak || 0) > 0
+    ? `Daily goal: ${plural(goal, 'chore')} to continue your ${user.streak}-day streak`
+    : `Daily goal: ${plural(goal, 'chore')} to start a streak`;
   document.getElementById('goal-sub').textContent = met
-    ? 'Your streak is safe today. Extra chores still earn XP.'
-    : (user.streak > 0 ? `Finish ${goal} to keep your ${user.streak}-day streak alive.` : `Finish ${goal} chores today to start a streak.`);
+    ? 'Complete for today! Extra chores still earn XP.'
+    : `${count} of ${goal} done today`;
 
   document.getElementById('user-streak-text').textContent = `🔥 ${user.streak || 0} day streak`;
   document.getElementById('user-savers-text').textContent = `🛡️ ${plural(user.streakSavers || 0, 'saver')}`;
@@ -1255,18 +1236,47 @@ function updateUserBar() {
       user.pendingChests === 1 ? 'A mystery chest is ready! Tap to open' : `${user.pendingChests} mystery chests ready! Tap to open`;
   }
 
+  /* Stat grid */
+  const critterCount = Object.keys(user.critters || {}).length;
+  document.getElementById('me-stat-grid').innerHTML = `
+    <div class="stat-box"><strong>${(user.xp || 0).toLocaleString()}</strong><span>Total XP</span></div>
+    <div class="stat-box"><strong>${countChoresDone(currentUser)}</strong><span>Chores done</span></div>
+    <div class="stat-box"><strong>${user.bestStreak || 0}</strong><span>Best streak</span></div>
+    <div class="stat-box"><strong>🛡️ ${user.streakSavers || 0}</strong><span>Streak savers</span></div>
+    <div class="stat-box"><strong>${critterCount}/${CRITTER_CATALOG.length}</strong><span>Critters</span></div>
+    <div class="stat-box"><strong>${user.chestsOpened || 0}</strong><span>Chests opened</span></div>`;
+
+  /* Coal card */
+  const coal = user.coal || 0;
+  document.getElementById('coal-card').innerHTML = `
+    <div class="coal-head"><span>🪨 Lumps of coal</span><strong>${coal}</strong></div>
+    <div class="coal-caption">${coalCaption(coal)}</div>
+    ${coal > 0 ? `<div class="coal-pile">${'🪨'.repeat(Math.min(coal, 30))}${coal > 30 ? ` <small>+${coal - 30}</small>` : ''}</div>` : ''}`;
+
   renderCritterCatalog();
 }
 
-/* ----- 7f. Critters (unlocked ones first, on the left) ----- */
+function coalCaption(n) {
+  if (n === 0) return 'None yet. Lucky you!';
+  if (n <= 2) return 'A humble start.';
+  if (n <= 5) return 'Enough to warm your hands.';
+  if (n <= 10) return 'A respectable pile.';
+  if (n <= 20) return 'You could open a barbecue.';
+  return 'Your coal shed is legendary.';
+}
+
+/* Critters, highest level shown first. Locked ones (no level yet) go at the
+   end, in catalog order. */
 function renderCritterCatalog() {
   const container = document.getElementById('critter-carousel');
   const user = getUser();
   const owned = (user && user.critters) || {};
 
-  /* Sort so unlocked critters come first. JavaScript keeps the original order
-     for critters that are tied, so the catalog order is otherwise preserved. */
-  const sorted = [...CRITTER_CATALOG].sort((a, b) => (owned[b.id] ? 1 : 0) - (owned[a.id] ? 1 : 0));
+  const sorted = [...CRITTER_CATALOG].sort((a, b) => {
+    const la = owned[a.id] ? (owned[a.id].lvl || 1) : -1;
+    const lb = owned[b.id] ? (owned[b.id].lvl || 1) : -1;
+    return lb - la;   // highest level first; locked (-1) sink to the bottom
+  });
   const unlockedCount = CRITTER_CATALOG.filter(c => owned[c.id]).length;
   document.getElementById('critter-count').textContent = `${unlockedCount} / ${CRITTER_CATALOG.length} found`;
 
@@ -1279,55 +1289,123 @@ function renderCritterCatalog() {
       const target = (data.lvl || 1) * SETTINGS.CRITTER_XP_PER_LEVEL;
       const pct = clamp(Math.floor(((data.xp || 0) / target) * 100), 0, 100);
       return `
-        <div class="critter">
+        <button class="critter" data-action="open-critter" data-id="${escapeHtml(critter.id)}">
           <div class="critter-img-wrap">${img}</div>
           <strong class="critter-name">${escapeHtml(critter.name)}</strong>
           <span class="critter-lvl">Lvl ${data.lvl || 1}</span>
           <div class="mini-bar"><div style="width:${pct}%"></div></div>
           <span class="critter-xp">${data.xp || 0}/${target} XP</span>
-        </div>`;
+        </button>`;
     }
     return `
-      <div class="critter locked" title="Locked. Do chores that use: ${escapeHtml(critter.keywords[0])}">
+      <button class="critter locked" data-action="open-critter" data-id="${escapeHtml(critter.id)}">
         <div class="critter-img-wrap">${img}<span class="critter-lock">🔒</span></div>
         <strong class="critter-name">???</strong>
         <div class="mini-bar"><div style="width:0%"></div></div>
-      </div>`;
+      </button>`;
   }).join('');
 }
 
-/* ----- 7g. Weekly bar chart: chores completed by the household each day ----- */
+/* ----- 7f. ACTIVITY TAB: leaderboard + history ----- */
 function isChoreLog(log) { return !log.type || log.type === 'chore'; }   // old logs have no "type"
 
-function renderWeeklyChart() {
-  const el = document.getElementById('weekly-chart');
-  if (!el) return;
-
+function renderLeaderboard() {
+  const container = document.getElementById('leaderboard-list');
   const today = todayStr();
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const dateStr = addDaysStr(today, -i);
-    days.push({ dateStr, count: 0, label: parseDateStr(dateStr).toLocaleDateString('en-GB', { weekday: 'short' }) });
+  let startDate = today;                                   // "today"
+  if (activeLeaderboardTab === 'week') startDate = addDaysStr(today, -6);
+  if (activeLeaderboardTab === 'month') startDate = addDaysStr(today, -29);
+
+  const scores = {};
+  Object.keys(appUsers).forEach(name => { scores[name] = { xp: 0, chores: 0 }; });
+
+  if (activeLeaderboardTab === 'all') {
+    Object.entries(appUsers).forEach(([name, u]) => { scores[name] = { xp: u.xp || 0, chores: countChoresDone(name) }; });
+  } else {
+    completedLogs.forEach(log => {
+      const entry = scores[log.completedBy];
+      if (!entry || !log.date || log.date < startDate || log.date > today) return;
+      entry.xp += typeof log.xpEarned === 'number' ? log.xpEarned : 20;   // very old logs had no xpEarned
+      if (isChoreLog(log)) entry.chores += 1;
+    });
   }
-  completedLogs.forEach(log => {
-    if (!isChoreLog(log)) return;
-    const day = days.find(d => d.dateStr === log.date);
-    if (day) day.count += 1;
-  });
 
-  const max = Math.max(1, ...days.map(d => d.count));
-  const total = days.reduce((sum, d) => sum + d.count, 0);
-  document.getElementById('weekly-total').textContent = `${plural(total, 'chore')}`;
+  const ranked = Object.entries(scores)
+    .map(([name, s]) => {
+      const u = appUsers[name] || {};
+      return { name, xp: s.xp, chores: s.chores, streak: u.streak || 0, level: calculateLevel(u.xp || 0).level, boost: isXpBoostActive(u) };
+    })
+    .sort((a, b) => b.xp - a.xp || b.chores - a.chores);
 
-  el.innerHTML = days.map(d => `
-    <div class="wk-col ${d.dateStr === today ? 'today' : ''}" title="${escapeHtml(d.dateStr)}: ${d.count}">
-      <span class="wk-count">${d.count || ''}</span>
-      <div class="wk-bar-area"><div class="wk-bar" style="height:${d.count ? Math.max(8, (d.count / max) * 100) : 3}%"></div></div>
-      <span class="wk-day">${d.label}</span>
+  const earners = ranked.filter(p => p.xp > 0);
+  if (earners.length === 0) {
+    container.innerHTML = `<div class="empty-state"><strong>Nobody on the board yet</strong>Finish a chore to take the lead!</div>`;
+    return;
+  }
+
+  /* Podium for the top three (only when there are at least two people to compare) */
+  let podiumHtml = '';
+  let listFrom = 0;
+  if (earners.length >= 2) {
+    const top = earners.slice(0, 3);
+    const medals = ['🥇', '🥈', '🥉'];
+    const slot = (p, i) => `
+      <div class="podium-slot rank-${i + 1}">
+        <div class="podium-name">${escapeHtml(p.name)}</div>
+        <div class="podium-xp">${p.xp.toLocaleString()} XP</div>
+        <div class="podium-block">${medals[i]}</div>
+      </div>`;
+    const order = top.length === 3 ? [1, 0, 2] : [1, 0];      // 2nd | 1st | 3rd, so the winner is in the middle
+    podiumHtml = `<div class="podium">${order.map(i => slot(top[i], i)).join('')}</div>`;
+    listFrom = top.length;
+  }
+
+  const rows = ranked.slice(listFrom).map((p, i) => `
+    <div class="leaderboard-item">
+      <span class="lb-rank">${listFrom + i + 1}</span>
+      <div class="lb-main">
+        <div class="lb-name">${escapeHtml(p.name)} ${p.boost ? '⚡' : ''}</div>
+        <div class="lb-sub">${escapeHtml(getRankTitle(p.level))}, 🔥 ${p.streak}d streak</div>
+      </div>
+      <div class="lb-right">
+        <span class="level-badge">Lvl ${p.level}</span>
+        <div class="lb-xp">${activeLeaderboardTab === 'all' ? '' : '+'}${p.xp.toLocaleString()} XP, ${plural(p.chores, 'chore')}</div>
+      </div>
     </div>`).join('');
+
+  container.innerHTML = podiumHtml + rows;
 }
 
-/* ----- 7h. Select-mode toolbar ----- */
+function renderCalendar() {
+  const year = currentCalDate.getFullYear();
+  const month = currentCalDate.getMonth();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  document.getElementById('calendar-month-year').textContent = `${monthNames[month]} ${year}`;
+
+  const choreLogs = completedLogs.filter(isChoreLog);
+  const today = todayStr();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let html = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+  for (let i = 0; i < firstWeekday; i++) html += '<div></div>';      // empty cells before the 1st
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${pad2(month + 1)}-${pad2(day)}`;
+    const count = choreLogs.filter(l => l.date === dateStr).length;
+    html += `<button class="cal-day ${count ? 'has-logs' : ''} ${dateStr === today ? 'is-today' : ''}" data-action="show-day" data-date="${dateStr}">
+               ${day}${count ? `<small>${count}</small>` : ''}
+             </button>`;
+  }
+  document.getElementById('calendar-grid').innerHTML = html;
+}
+
+function renderActivityTab() {
+  renderLeaderboard();
+  renderCalendar();
+}
+
+/* ----- 7g. Select-mode toolbar ----- */
 function updateSelectToolbar() {
   const bar = document.getElementById('select-toolbar');
   bar.hidden = !selectMode;
@@ -1335,7 +1413,7 @@ function updateSelectToolbar() {
   document.getElementById('select-count').textContent = `${selectedIds.size} selected`;
 }
 
-/* ----- 7i. Discord alert (only when the house is in bad shape) ----- */
+/* ----- 7h. Discord alert (only when the house is in bad shape) ----- */
 async function maybeSendDiscordAlert(score) {
   if (!DISCORD_WEBHOOK_URL || score >= SETTINGS.ALERT_BELOW_SCORE) return;
   const last = Number(localStorage.getItem('cleanDeckLastAlert') || 0);
@@ -1351,6 +1429,17 @@ async function maybeSendDiscordAlert(score) {
     console.error('Failed to send Discord alert:', error);
   }
 }
+
+/* ----- 7i. The main "redraw everything" function -----
+   Called after anything changes. Updates all three tabs, then lets whichever
+   one is currently visible show up to date without any extra work. */
+function render() {
+  renderHouseTab();
+  renderMeTab();
+  renderActivityTab();
+  refreshIcons();
+}
+
 
 
 /* ==========================================================================
@@ -1589,6 +1678,7 @@ async function handleBulkEditSubmit(event) {
   const room = document.getElementById('be-room').value.trim();
   const time = document.getElementById('be-time').value;
   const interval = parseInt(document.getElementById('be-interval').value, 10);
+  const lastDone = document.getElementById('be-lastdone').value;   // blank = no change
   const priority = document.getElementById('be-priority').value;
   const addEquipment = bulkEditPicker.getSelected();
   const linkAll = document.getElementById('be-link').checked;
@@ -1600,6 +1690,7 @@ async function handleBulkEditSubmit(event) {
     if (room) fields.room = room;
     if (time) fields.timeTag = time;
     if (interval >= 1) fields.interval = interval;
+    if (lastDone) fields.lastDone = lastDone;                   // a manual correction, not a "completion"
     if (priority === 'yes') fields.isHighPriority = true;
     if (priority === 'no') fields.isHighPriority = false;
     if (addEquipment.length) fields.equipment = unionLists(getEquipment(task), addEquipment);
@@ -1613,7 +1704,6 @@ async function handleBulkEditSubmit(event) {
   selectedIds.clear();
   render();
 }
-
 
 /* ==========================================================================
    PART 9: POP-UP WINDOWS AND FORMS
@@ -1750,27 +1840,49 @@ function updateOneOffHint() {
   document.getElementById('oneoff-hint').hidden = !document.getElementById('task-oneoff').checked;
 }
 
-/* ----- 9d. Add / edit one chore ----- */
-function openSingleModal() {
+/* ----- 9d. Add / edit a chore -----
+   ONE modal ("chore-modal") handles both adding and editing. When adding,
+   it shows a Single/Bulk tab switcher at the top; when editing an existing
+   chore, there's nothing to switch, so the tabs are hidden. */
+let choreModalMode = 'add';   // 'add' or 'edit'
+let activeChoreTab = 'single';
+
+function switchChoreTab(tab) {
+  activeChoreTab = tab;
+  document.getElementById('chore-tab-single').classList.toggle('active', tab === 'single');
+  document.getElementById('chore-tab-bulk').classList.toggle('active', tab === 'bulk');
+  document.getElementById('chore-pane-single').hidden = tab !== 'single';
+  document.getElementById('chore-pane-bulk').hidden = tab !== 'bulk';
+}
+
+function openAddChoreModal() {
+  choreModalMode = 'add';
   document.getElementById('single-form').reset();
+  document.getElementById('bulk-form').reset();
   document.getElementById('edit-task-id').value = '';
-  document.getElementById('modal-title').textContent = 'Add new chore';
+  document.getElementById('chore-modal-title').textContent = 'Add new chore';
+  document.getElementById('chore-tab-switcher').hidden = false;
   document.getElementById('task-lastdone').value = todayStr();
+  document.getElementById('bulk-lastdone').value = todayStr();
   document.getElementById('modal-archive-btn').hidden = true;
   document.getElementById('modal-delete-btn').hidden = true;
   taskEquipmentPicker.setSelected([]);
+  bulkAddPicker.setSelected([]);
   renderLinkPicker(null, []);
   updateXpPreview();
   updateOneOffHint();
-  openModal('single-modal');
+  switchChoreTab('single');
+  openModal('chore-modal');
 }
 
 function openEditModal(id) {
   const t = getAllTasks().find(x => x.id === id);
   if (!t) return;
+  choreModalMode = 'edit';
   document.getElementById('single-form').reset();
   document.getElementById('edit-task-id').value = t.id;
-  document.getElementById('modal-title').textContent = 'Edit chore';
+  document.getElementById('chore-modal-title').textContent = 'Edit chore';
+  document.getElementById('chore-tab-switcher').hidden = true;   // editing is always "single"
   document.getElementById('task-name').value = t.name || '';
   document.getElementById('task-room').value = t.room || 'General';
   document.getElementById('task-time').value = t.timeTag || 'medium';
@@ -1785,7 +1897,8 @@ function openEditModal(id) {
   renderLinkPicker(t.id, getLinkedIds(t));
   updateXpPreview();
   updateOneOffHint();
-  openModal('single-modal');
+  switchChoreTab('single');
+  openModal('chore-modal');
 }
 
 async function handleSingleSubmit(event) {
@@ -1857,14 +1970,11 @@ async function awardTaskCreationXp(count) {
   updateUserBar();
 }
 
-/* ----- 9e. Bulk add ----- */
-function openBulkModal() {
-  document.getElementById('bulk-form').reset();
-  document.getElementById('bulk-lastdone').value = todayStr();
-  bulkAddPicker.setSelected([]);
-  openModal('bulk-modal');
-}
+/* Kept as a small wrapper so the rest of the app doesn't need to know that
+   the Me tab, not a header widget, is what shows XP/streak/chest info now. */
+function updateUserBar() { renderMeTab(); }
 
+/* ----- 9e. Bulk add ----- */
 async function handleBulkSubmit(event) {
   event.preventDefault();
   const names = document.getElementById('bulk-names').value
@@ -1893,7 +2003,7 @@ async function handleBulkSubmit(event) {
   await awardTaskCreationXp(names.length);
 }
 
-/* ----- 9f. Bulk edit ----- */
+/* ----- 9f. Bulk edit (from Select mode) ----- */
 function openBulkEditModal() {
   if (selectedIds.size === 0) { showToast('Tick some chores first'); return; }
   document.getElementById('bulk-edit-form').reset();
@@ -1903,38 +2013,10 @@ function openBulkEditModal() {
 }
 
 /* ----- 9g. History calendar ----- */
-function openCalendarModal() {
-  renderCalendar();
-  openModal('calendar-modal');
-}
 function changeMonth(delta) {
   currentCalDate.setDate(1);                        // avoid jumping over short months
   currentCalDate.setMonth(currentCalDate.getMonth() + delta);
   renderCalendar();
-}
-
-function renderCalendar() {
-  const year = currentCalDate.getFullYear();
-  const month = currentCalDate.getMonth();
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  document.getElementById('calendar-month-year').textContent = `${monthNames[month]} ${year}`;
-
-  const choreLogs = completedLogs.filter(isChoreLog);
-  const today = todayStr();
-  const firstWeekday = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  let html = ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => `<div class="cal-dow">${d}</div>`).join('');
-  for (let i = 0; i < firstWeekday; i++) html += '<div></div>';      // empty cells before the 1st
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${year}-${pad2(month + 1)}-${pad2(day)}`;
-    const count = choreLogs.filter(l => l.date === dateStr).length;
-    html += `<button class="cal-day ${count ? 'has-logs' : ''} ${dateStr === today ? 'is-today' : ''}" data-action="show-day" data-date="${dateStr}">
-               ${day}${count ? `<small>${count}</small>` : ''}
-             </button>`;
-  }
-  document.getElementById('calendar-grid').innerHTML = html;
 }
 
 function showDayLogs(dateStr) {
@@ -1945,7 +2027,24 @@ function showDayLogs(dateStr) {
     : dayLogs.map(l => `• ${escapeHtml(l.name)} <span style="color:var(--sky-deep);font-weight:700">(by ${escapeHtml(l.completedBy)})</span>`).join('<br>');
 }
 
-/* ----- 9h. Users: switching, adding, removing inactive ones ----- */
+/* ----- 9h. Activity tab: leaderboard / history sub-view ----- */
+let activityView = 'leaderboard';
+function switchActivityView(view) {
+  activityView = view;
+  document.querySelectorAll('[data-action="switch-activity-view"]').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.view === view));
+  document.getElementById('activity-leaderboard-view').hidden = view !== 'leaderboard';
+  document.getElementById('activity-history-view').hidden = view !== 'history';
+}
+
+function switchLeaderboardTab(tab) {
+  activeLeaderboardTab = tab;
+  document.querySelectorAll('.tab-btn[id^="tab-"]').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  renderLeaderboard();
+}
+
+/* ----- 9i. Users: switching, adding, removing inactive ones ----- */
 function openUserModal() {
   document.getElementById('user-name-input').value = '';
   renderUserList();
@@ -2040,84 +2139,6 @@ async function cleanupInactiveUsers() {
   render();
 }
 
-/* ----- 9i. Profile ----- */
-function coalCaption(n) {
-  if (n === 0) return 'None yet. Lucky you!';
-  if (n <= 2) return 'A humble start.';
-  if (n <= 5) return 'Enough to warm your hands.';
-  if (n <= 10) return 'A respectable pile.';
-  if (n <= 20) return 'You could open a barbecue.';
-  return 'Your coal shed is legendary.';
-}
-
-function openProfileModal() {
-  if (!getUser()) { openUserModal(); return; }
-  renderProfile();
-  openModal('profile-modal');
-}
-
-function renderProfile() {
-  const user = getUser();
-  if (!user) return;
-  const { level, currentLevelXp, xpForNext } = calculateLevel(user.xp);
-  const rank = getRank(level);
-  const coal = user.coal || 0;
-  const goal = getDailyGoal(user);
-  const critterCount = Object.keys(user.critters || {}).length;
-
-  const goalOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    .map(n => `<option value="${n}" ${n === goal ? 'selected' : ''}>${plural(n, 'chore')} a day</option>`).join('');
-
-  const ladder = RANKS.map(r => `
-    <div class="rank-step ${level >= r.level ? 'reached' : ''}">
-      <span>${r.emoji} ${escapeHtml(r.title)}</span>
-      ${r.reward ? `<span class="rs-reward">+${r.reward.savers} 🛡️</span>` : ''}
-      <span class="rs-lvl">Lvl ${r.level}</span>
-    </div>`).join('');
-
-  document.getElementById('profile-body').innerHTML = `
-    <div class="profile-hero">
-      <span class="avatar">${escapeHtml(currentUser.charAt(0).toUpperCase())}</span>
-      <div class="profile-name">${escapeHtml(currentUser)}</div>
-      <div class="profile-rank">${rank.emoji} ${escapeHtml(rank.title)}, Level ${level}</div>
-    </div>
-
-    <div class="profile-section">
-      <div class="xp-bar-container"><div class="xp-bar-fill" style="width:${Math.floor((currentLevelXp / xpForNext) * 100)}%"></div></div>
-      <div class="xp-text"><span>${currentLevelXp} / ${xpForNext} XP to level ${level + 1}</span></div>
-    </div>
-
-    <div class="profile-section">
-      <div class="stat-grid">
-        <div class="stat-box"><strong>${(user.xp || 0).toLocaleString()}</strong><span>Total XP</span></div>
-        <div class="stat-box"><strong>🔥 ${user.streak || 0}</strong><span>Day streak</span></div>
-        <div class="stat-box"><strong>${user.bestStreak || 0}</strong><span>Best streak</span></div>
-        <div class="stat-box"><strong>${user.totalChores || 0}</strong><span>Chores done</span></div>
-        <div class="stat-box"><strong>🛡️ ${user.streakSavers || 0}</strong><span>Streak savers</span></div>
-        <div class="stat-box"><strong>${critterCount}/${CRITTER_CATALOG.length}</strong><span>Critters</span></div>
-      </div>
-    </div>
-
-    <div class="profile-section">
-      <div class="coal-card">
-        <div class="coal-head"><span>🪨 Lumps of coal</span><strong>${coal}</strong></div>
-        <div class="coal-caption">${coalCaption(coal)}</div>
-        ${coal > 0 ? `<div class="coal-pile">${'🪨'.repeat(Math.min(coal, 30))}${coal > 30 ? ` <small>+${coal - 30}</small>` : ''}</div>` : ''}
-      </div>
-    </div>
-
-    <div class="profile-section">
-      <h3>Daily goal</h3>
-      <select id="profile-goal-select" class="filter-select" style="width:100%;max-width:none" aria-label="Daily goal">${goalOptions}</select>
-      <p class="hint" style="margin-top:6px">Hit this many chores every day to grow your streak. Mystery chests opened: ${user.chestsOpened || 0}.</p>
-    </div>
-
-    <div class="profile-section">
-      <h3>Rank ladder</h3>
-      <div class="rank-ladder">${ladder}</div>
-    </div>`;
-}
-
 async function changeDailyGoal(value) {
   const user = getUser();
   if (!user) return;
@@ -2127,84 +2148,38 @@ async function changeDailyGoal(value) {
   showToast(`Daily goal set to ${plural(user.dailyGoal, 'chore')}`);
 }
 
-/* ----- 9j. Leaderboard ----- */
-function switchLeaderboardTab(tab) {
-  activeLeaderboardTab = tab;
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.getElementById(`tab-${tab}`).classList.add('active');
-  renderLeaderboard();
-}
-function openLeaderboardModal() {
-  switchLeaderboardTab('today');
-  openModal('leaderboard-modal');
-}
+/* ----- 9j. Critter lightbox (tap a critter to see it up close) ----- */
+function openCritterLightbox(critterId) {
+  const critter = CRITTER_CATALOG.find(c => c.id === critterId);
+  if (!critter) return;
+  const user = getUser();
+  const data = user && user.critters && user.critters[critterId];
+  document.querySelector('#critter-modal h2').textContent = data ? critter.name : '???';
 
-function renderLeaderboard() {
-  const container = document.getElementById('leaderboard-list');
-  const today = todayStr();
-  let startDate = today;                                   // "today"
-  if (activeLeaderboardTab === 'week') startDate = addDaysStr(today, -6);
-  if (activeLeaderboardTab === 'month') startDate = addDaysStr(today, -29);
+  const img = `<img class="lightbox-img" src="${escapeHtml(critter.image)}" alt="${data ? escapeHtml(critter.name) : ''}">`;
 
-  const scores = {};
-  Object.keys(appUsers).forEach(name => { scores[name] = { xp: 0, chores: 0 }; });
-
-  if (activeLeaderboardTab === 'all') {
-    Object.entries(appUsers).forEach(([name, u]) => { scores[name] = { xp: u.xp || 0, chores: u.totalChores || 0 }; });
-  } else {
-    completedLogs.forEach(log => {
-      const entry = scores[log.completedBy];
-      if (!entry || !log.date || log.date < startDate || log.date > today) return;
-      entry.xp += typeof log.xpEarned === 'number' ? log.xpEarned : 20;   // very old logs had no xpEarned
-      if (isChoreLog(log)) entry.chores += 1;
-    });
-  }
-
-  const ranked = Object.entries(scores)
-    .map(([name, s]) => {
-      const u = appUsers[name] || {};
-      return { name, xp: s.xp, chores: s.chores, streak: u.streak || 0, level: calculateLevel(u.xp || 0).level, boost: isXpBoostActive(u) };
-    })
-    .sort((a, b) => b.xp - a.xp || b.chores - a.chores);
-
-  const earners = ranked.filter(p => p.xp > 0);
-  if (earners.length === 0) {
-    container.innerHTML = `<div class="empty-state"><strong>Nobody on the board yet</strong>Finish a chore to take the lead!</div>`;
-    return;
-  }
-
-  /* Podium for the top three (only when there are at least two people to compare) */
-  let podiumHtml = '';
-  let listFrom = 0;
-  if (earners.length >= 2) {
-    const top = earners.slice(0, 3);
-    const medals = ['🥇', '🥈', '🥉'];
-    const slot = (p, i) => `
-      <div class="podium-slot rank-${i + 1}">
-        <div class="podium-name">${escapeHtml(p.name)}</div>
-        <div class="podium-xp">${p.xp.toLocaleString()} XP</div>
-        <div class="podium-block">${medals[i]}</div>
+  if (data) {
+    const target = (data.lvl || 1) * SETTINGS.CRITTER_XP_PER_LEVEL;
+    const pct = clamp(Math.floor(((data.xp || 0) / target) * 100), 0, 100);
+    document.getElementById('critter-lightbox-body').innerHTML = `
+      <div class="lightbox-body">
+        <div class="lightbox-img-wrap">${img}</div>
+        <div class="lightbox-name">${escapeHtml(critter.name)}</div>
+        <div class="lightbox-lvl">Level ${data.lvl || 1}</div>
+        <div class="mini-bar"><div style="width:${pct}%"></div></div>
+        <span class="critter-xp">${data.xp || 0}/${target} XP to next level</span>
       </div>`;
-    const order = top.length === 3 ? [1, 0, 2] : [1, 0];      // 2nd | 1st | 3rd, so the winner is in the middle
-    podiumHtml = `<div class="podium">${order.map(i => slot(top[i], i)).join('')}</div>`;
-    listFrom = top.length;
+  } else {
+    document.getElementById('critter-lightbox-body').innerHTML = `
+      <div class="lightbox-body">
+        <div class="lightbox-img-wrap is-locked">${img}</div>
+        <div class="lightbox-name">???</div>
+        <div class="lightbox-locked-text">Still locked. Keep doing chores to discover this critter!</div>
+      </div>`;
   }
-
-  const rows = ranked.slice(listFrom).map((p, i) => `
-    <div class="leaderboard-item">
-      <span class="lb-rank">${listFrom + i + 1}</span>
-      <div class="lb-main">
-        <div class="lb-name">${escapeHtml(p.name)} ${p.boost ? '⚡' : ''}</div>
-        <div class="lb-sub">${escapeHtml(getRankTitle(p.level))}, 🔥 ${p.streak}d streak</div>
-      </div>
-      <div class="lb-right">
-        <span class="level-badge">Lvl ${p.level}</span>
-        <div class="lb-xp">${activeLeaderboardTab === 'all' ? '' : '+'}${p.xp.toLocaleString()} XP, ${plural(p.chores, 'chore')}</div>
-      </div>
-    </div>`).join('');
-
-  container.innerHTML = podiumHtml + rows;
+  openModal('critter-modal');
 }
+
 
 
 /* ==========================================================================
@@ -2472,27 +2447,45 @@ function collectChest() {
   if (user && user.pendingChests > 0) showToast(`🧰 You still have ${plural(user.pendingChests, 'chest')} to open`);
 }
 
-
 /* ==========================================================================
    PART 11: WIRING UP CLICKS AND STARTING THE APP
    ========================================================================== */
+
+let currentTab = 'house';   // which of the 3 bottom tabs is showing right now
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('panel-me').hidden = tab !== 'me';
+  document.getElementById('panel-house').hidden = tab !== 'house';
+  document.getElementById('panel-activity').hidden = tab !== 'activity';
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+  window.scrollTo(0, 0);
+  refreshIcons();
+}
 
 /* Every button in index.html has a data-action label. This table says which
    function each label runs. To add a new button: give it data-action="my-name",
    then add  'my-name': () => myFunction()  here.
    "el" is the button that was clicked, and el.dataset.id reads its data-id. */
 const ACTIONS = {
-  // header
-  'open-leaderboard': () => openLeaderboardModal(),
-  'open-calendar': () => openCalendarModal(),
-  'toggle-select-mode': () => toggleSelectMode(),
-  'open-bulk-add': () => openBulkModal(),
-  'open-add-task': () => openSingleModal(),
+  // bottom nav
+  'switch-tab': el => switchTab(el.dataset.tab),
 
-  // player card
-  'open-profile': () => openProfileModal(),
+  // House tab top buttons
+  'toggle-select-mode': () => toggleSelectMode(),
+  'open-add-task': () => openAddChoreModal(),
+
+  // Me tab
   'open-user-switch': () => openUserModal(),
   'open-chest': () => openChestFlow(),
+  'open-critter': el => openCritterLightbox(el.dataset.id),
+
+  // Activity tab
+  'switch-activity-view': el => switchActivityView(el.dataset.view),
+  'switch-lb-tab': el => switchLeaderboardTab(el.dataset.tab),
+  'calendar-prev': () => changeMonth(-1),
+  'calendar-next': () => changeMonth(1),
+  'show-day': el => showDayLogs(el.dataset.date),
 
   // lists and filters
   'filter-room': el => filterByRoom(el.dataset.room),
@@ -2512,7 +2505,8 @@ const ACTIONS = {
   'restore-task': el => restoreTask(el.dataset.id),
   'delete-task': el => deleteTask(el.dataset.id),
 
-  // add/edit form extras
+  // add/edit chore modal
+  'switch-chore-tab': el => switchChoreTab(el.dataset.tab),
   'modal-archive': async () => {
     const id = document.getElementById('edit-task-id').value;
     if (id) { await archiveTask(id); closeModals(); }
@@ -2531,12 +2525,8 @@ const ACTIONS = {
 
   // modals
   'close-modals': () => closeModals(),
-  'switch-tab': el => switchLeaderboardTab(el.dataset.tab),
   'choose-user': el => chooseUser(el.dataset.name),
   'cleanup-users': () => cleanupInactiveUsers(),
-  'calendar-prev': () => changeMonth(-1),
-  'calendar-next': () => changeMonth(1),
-  'show-day': el => showDayLogs(el.dataset.date),
 
   // rewards and chest
   'close-reward': () => closeRewardModal(),
@@ -2566,18 +2556,14 @@ function wireEvents() {
   document.getElementById('user-form').addEventListener('submit', handleUserSubmit);
 
   /* Live updates as you type */
-  document.getElementById('search-input').addEventListener('input', render);
-  document.getElementById('time-filter-select').addEventListener('change', render);
+  document.getElementById('search-input').addEventListener('input', renderHouseTab);
+  document.getElementById('time-filter-select').addEventListener('change', renderHouseTab);
   document.getElementById('task-time').addEventListener('change', updateXpPreview);
   document.getElementById('task-interval').addEventListener('input', updateXpPreview);
   document.getElementById('task-xp-override').addEventListener('input', updateXpPreview);
   document.getElementById('task-oneoff').addEventListener('change', updateOneOffHint);
   document.getElementById('link-search').addEventListener('input', filterLinkPicker);
-
-  /* The daily-goal drop-down in the profile is created later, so we listen at page level */
-  document.addEventListener('change', event => {
-    if (event.target.id === 'profile-goal-select') changeDailyGoal(event.target.value);
-  });
+  document.getElementById('me-goal-select').addEventListener('change', event => changeDailyGoal(event.target.value));
 
   /* Escape closes pop-ups (but not the mystery chest, which must be finished) */
   document.addEventListener('keydown', event => {
@@ -2588,11 +2574,18 @@ function wireEvents() {
      (Image "error" events don't bubble, so we listen in the "capture" phase: the "true".) */
   document.addEventListener('error', event => {
     const img = event.target;
-    if (!img || img.tagName !== 'IMG' || !img.classList.contains('critter-img')) return;
-    const fallback = document.createElement('span');
-    fallback.className = 'critter-fallback';
-    fallback.textContent = img.closest('.critter.locked') ? '❔' : '🐾';
-    img.replaceWith(fallback);
+    if (!img || img.tagName !== 'IMG') return;
+    if (img.classList.contains('critter-img')) {
+      const fallback = document.createElement('span');
+      fallback.className = 'critter-fallback';
+      fallback.textContent = img.closest('.locked') ? '❔' : '🐾';
+      img.replaceWith(fallback);
+    } else if (img.classList.contains('lightbox-img')) {
+      const fallback = document.createElement('span');
+      fallback.className = 'lightbox-fallback';
+      fallback.textContent = img.closest('.is-locked') ? '❔' : '🐾';
+      img.replaceWith(fallback);
+    }
   }, true);
 }
 
@@ -2606,6 +2599,7 @@ function init() {
   bulkEditPicker = createEquipmentPicker('bulk-edit-equipment-picker');
 
   wireEvents();
+  switchTab('house');   // House is the tab you land on
 
   if (isFirebaseConfigured) startRealtimeListeners();
   render();
