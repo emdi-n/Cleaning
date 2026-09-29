@@ -151,10 +151,7 @@ const CRITTER_CATALOG = [
 /* The equipment you can tick when adding a chore. New ones you add yourself
    are remembered automatically (they're collected from your existing chores). */
 const EQUIPMENT_OPTIONS = [
-  'Dyson', 'Cloth', 'Multipurpose Spray', 'Mop', 'Bucket', 'Sponge',
-  'Duster', 'Bleach', 'Toilet brush', 'Bin bags', 'Rubber gloves',
-  'Washing machine', 'Dishwasher', 'Broom', 'Dustpan', 'Window cleaner',
-  'Squeegee', 'Descaler', 'Oven cleaner', 'Scrubbing brush'
+  'Dyson', 'Cloth', 'Mop', 'Bucket', 'Sponge', 'Bleach', 'Bin bags'
 ];
 
 /* A little emoji for each room, chosen by looking for a word in the room name. */
@@ -780,12 +777,21 @@ function computeTaskBasics(task) {
   if (daysOverdue >= 0 && daysOverdue <= SETTINGS.FRESH_OVERDUE_DAYS) tier = 'fresh';   // due today to 3 days late
   else if (daysOverdue > SETTINGS.FRESH_OVERDUE_DAYS) tier = 'stale';                    // long overdue
 
+  /* Whether YOU (the person using this device) already ticked this chore off
+     today - separate from doneToday below, which is about the schedule and
+     doesn't care who did it. Two people can both tick the same chore on the
+     same day (e.g. you both did the dishwasher); this just stops one person
+     accidentally double-ticking. */
+  const doneByMeToday = completedLogs.some(l =>
+    isChoreLog(l) && l.taskId === task.id && l.date === today && l.completedBy === currentUser);
+
   return {
     ...task,
     room: (task.room || 'General').trim() || 'General',
     timeTag: task.timeTag || 'medium',
     interval, daysElapsed, daysOverdue, overdueRatio, tier,
     doneToday: lastDone === today && !!task.lastDone,
+    doneByMeToday,
     equipmentList: getEquipment(task)
   };
 }
@@ -1046,12 +1052,17 @@ function taskCardHtml(t, opts = {}) {
         <button class="action-icon-btn" data-action="restore-task" data-id="${escapeHtml(t.id)}"><i data-lucide="archive-restore"></i> Restore</button>
         <button class="action-icon-btn" data-action="delete-task" data-id="${escapeHtml(t.id)}"><i data-lucide="trash-2"></i> Delete</button>`;
     } else {
-      actionsHtml = t.inProgressBy
-        ? `<button class="action-icon-btn" data-action="stop-task" data-id="${escapeHtml(t.id)}"><i data-lucide="square"></i> Stop</button>`
-        : (t.doneToday ? '' : `<button class="action-icon-btn" data-action="start-task" data-id="${escapeHtml(t.id)}"><i data-lucide="play"></i> Start</button>`);
-      rightHtml = t.doneToday
+      /* Done sits on top, with the in-progress toggle stacked below it -
+         Done is what most taps are for, so it comes first. The Done button
+         is only disabled once YOU'VE ticked it today; someone else in the
+         household ticking it first doesn't stop you doing the same. */
+      const doneBtn = t.doneByMeToday
         ? `<button class="complete-btn" disabled><i data-lucide="check"></i> Done</button>`
         : `<button class="complete-btn" data-action="complete-task" data-id="${escapeHtml(t.id)}"><i data-lucide="check"></i> Done</button>`;
+      const progressBtn = t.inProgressBy
+        ? `<button class="action-icon-btn" data-action="stop-task" data-id="${escapeHtml(t.id)}"><i data-lucide="square"></i> Stop</button>`
+        : `<button class="action-icon-btn" data-action="start-task" data-id="${escapeHtml(t.id)}"><i data-lucide="hourglass"></i> In progress</button>`;
+      rightHtml = `<div class="task-buttons">${doneBtn}${progressBtn}</div>`;
     }
   }
 
@@ -1426,7 +1437,12 @@ async function completeTask(id) {
   if (!task) return;
 
   const today = todayStr();
-  if (task.lastDone === today) { showToast('That one is already done today!'); return; }
+  const alreadyByMe = completedLogs.some(l =>
+    isChoreLog(l) && l.taskId === id && l.date === today && l.completedBy === currentUser);
+  if (alreadyByMe) { showToast('You already ticked that one off today!'); return; }
+  /* Note: this chore may already be "done today" by someone else in the
+     household (task.lastDone === today) - that's fine, both of you can tick
+     the same chore on the same day. */
 
   refreshStreak(user);   // make sure the streak is up to date before we add to it
 
@@ -1617,6 +1633,7 @@ async function handleBulkEditSubmit(event) {
   const time = document.getElementById('be-time').value;
   const interval = parseInt(document.getElementById('be-interval').value, 10);
   const lastDone = document.getElementById('be-lastdone').value;   // blank = no change
+  const addToHistory = document.getElementById('be-lastdone-history').checked;
   const name = ids.length === 1 ? document.getElementById('be-name').value.trim() : '';   // renaming only makes sense for one chore
   const priority = document.getElementById('be-priority').value;
   const addEquipment = bulkEditPicker.getSelected();
@@ -1636,6 +1653,15 @@ async function handleBulkEditSubmit(event) {
     if (addEquipment.length) fields.equipment = unionLists(getEquipment(task), addEquipment);
     if (linkAll && ids.length > 1) fields.linkedTaskIds = unionLists(getLinkedIds(task), ids.filter(x => x !== id));
     if (Object.keys(fields).length > 0) await saveTaskDoc(id, fields);
+    /* Optional: log the manual date into the calendar/history too, under "Unknown"
+       since a backdated correction isn't tied to whoever happened to type it in,
+       and it earns no XP (it isn't a real completion). */
+    if (lastDone && addToHistory) {
+      await addLogEntry({
+        type: 'chore', taskId: id, name: fields.name || task.name, date: lastDone,
+        timestamp: Date.now(), completedBy: 'Unknown', xpEarned: 0
+      });
+    }
   }));
 
   showToast(`Updated ${plural(ids.length, 'chore')}`);
