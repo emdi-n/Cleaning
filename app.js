@@ -287,7 +287,6 @@ let completedLogs = readStored('cleanDeckLogs', []);                   // histor
 let firestoreTasks = [];                                               // chores loaded from Firebase
 
 let selectedRoomFilter = null;       // which room card is tapped, if any
-let activeLeaderboardTab = 'today';
 let showAllTasks = false;
 let showArchived = false;
 let selectMode = false;              // true while ticking several chores
@@ -1030,19 +1029,15 @@ function taskCardHtml(t, opts = {}) {
   if (t.inProgressBy) badges.push(`<span class="badge-pill progress-tag">🚧 ${escapeHtml(t.inProgressBy)} is on it</span>`);
   if (t.oneOff) badges.push(`<span class="badge-pill oneoff-tag">One-off job</span>`);
 
-  /* Equipment chips (max 3 shown) - this is what replaced the old dotted underline */
-  const equip = t.equipmentList || [];
-  const equipHtml = equip.length
-    ? `<div class="equip-chips">${equip.slice(0, 3).map(e => `<span class="equip-mini">${escapeHtml(e)}</span>`).join('')}${equip.length > 3 ? `<span class="equip-mini">+${equip.length - 3}</span>` : ''}</div>`
-    : '';
-
   /* Linked chores */
   const linked = getLinkedTasks(t);
   const linkedHtml = linked.length
     ? `<div class="link-chips">🔗 ${linked.slice(0, 2).map(l => escapeHtml(l.name)).join(', ')}${linked.length > 2 ? ` +${linked.length - 2} more` : ''}</div>`
     : '';
 
-  /* Action buttons (hidden in select mode) */
+  /* Action buttons (hidden in select mode). There's no per-card "Edit" any
+     more - chores are edited by turning on Edit (select) mode and tapping
+     them, which opens the same bulk-edit form even for just one. */
   let actionsHtml = '';
   let rightHtml = '';
   if (!inSelectMode) {
@@ -1051,11 +1046,9 @@ function taskCardHtml(t, opts = {}) {
         <button class="action-icon-btn" data-action="restore-task" data-id="${escapeHtml(t.id)}"><i data-lucide="archive-restore"></i> Restore</button>
         <button class="action-icon-btn" data-action="delete-task" data-id="${escapeHtml(t.id)}"><i data-lucide="trash-2"></i> Delete</button>`;
     } else {
-      actionsHtml = `
-        <button class="action-icon-btn" data-action="edit-task" data-id="${escapeHtml(t.id)}"><i data-lucide="pencil"></i> Edit</button>
-        ${t.inProgressBy
-          ? `<button class="action-icon-btn" data-action="stop-task" data-id="${escapeHtml(t.id)}"><i data-lucide="square"></i> Stop</button>`
-          : (t.doneToday ? '' : `<button class="action-icon-btn" data-action="start-task" data-id="${escapeHtml(t.id)}"><i data-lucide="play"></i> Start</button>`)}`;
+      actionsHtml = t.inProgressBy
+        ? `<button class="action-icon-btn" data-action="stop-task" data-id="${escapeHtml(t.id)}"><i data-lucide="square"></i> Stop</button>`
+        : (t.doneToday ? '' : `<button class="action-icon-btn" data-action="start-task" data-id="${escapeHtml(t.id)}"><i data-lucide="play"></i> Start</button>`);
       rightHtml = t.doneToday
         ? `<button class="complete-btn" disabled><i data-lucide="check"></i> Done</button>`
         : `<button class="complete-btn" data-action="complete-task" data-id="${escapeHtml(t.id)}"><i data-lucide="check"></i> Done</button>`;
@@ -1075,7 +1068,6 @@ function taskCardHtml(t, opts = {}) {
           <span>${escapeHtml(t.name)}</span>
         </div>
         <div class="task-badges">${badges.join('')}</div>
-        ${equipHtml}
         ${linkedHtml}
         <div class="task-actions">${actionsHtml}</div>
       </div>
@@ -1189,7 +1181,8 @@ function renderMeTab() {
     nameEl.textContent = 'Choose a user';
     document.getElementById('user-avatar').textContent = '?';
     document.getElementById('me-stat-grid').innerHTML = '';
-    document.getElementById('coal-card').innerHTML = '';
+    document.getElementById('bag-coal-count').textContent = '0';
+    document.getElementById('bag-savers-count').textContent = '0';
     renderCritterCatalog();
     return;
   }
@@ -1204,27 +1197,6 @@ function renderMeTab() {
   document.getElementById('xp-bar-fill').style.width = `${Math.floor((currentLevelXp / xpForNext) * 100)}%`;
   document.getElementById('xp-current-text').textContent = `${currentLevelXp} / ${xpForNext} XP`;
 
-  /* Daily goal ring + text */
-  const goal = getDailyGoal(user);
-  const count = getDailyCount(user);
-  const met = hasMetGoalToday(user) || count >= goal;
-  setRing('goal-ring', {
-    percent: (Math.min(count, goal) / goal) * 100, size: 60, stroke: 7,
-    color: met ? '#7cd0a2' : '#86a7ee',
-    inner: `<span style="font-size:1.2rem">${Math.min(count, goal)}<small>of ${goal}</small></span>`
-  });
-  document.querySelector('.goal-row').classList.toggle('goal-met', met);
-  document.getElementById('me-goal-select').value = String(goal);
-  document.getElementById('goal-title').textContent = (user.streak || 0) > 0
-    ? `Daily goal: ${plural(goal, 'chore')} to continue your ${user.streak}-day streak`
-    : `Daily goal: ${plural(goal, 'chore')} to start a streak`;
-  document.getElementById('goal-sub').textContent = met
-    ? 'Complete for today! Extra chores still earn XP.'
-    : `${count} of ${goal} done today`;
-
-  document.getElementById('user-streak-text').textContent = `🔥 ${user.streak || 0} day streak`;
-  document.getElementById('user-savers-text').textContent = `🛡️ ${plural(user.streakSavers || 0, 'saver')}`;
-
   const boost = document.getElementById('user-boost-badge');
   boost.hidden = !isXpBoostActive(user);
   if (!boost.hidden) boost.textContent = `⚡ 2x XP (${boostTimeLeftText(user)})`;
@@ -1236,33 +1208,34 @@ function renderMeTab() {
       user.pendingChests === 1 ? 'A mystery chest is ready! Tap to open' : `${user.pendingChests} mystery chests ready! Tap to open`;
   }
 
-  /* Stat grid */
-  const critterCount = Object.keys(user.critters || {}).length;
+  /* Stat grid - just the headline numbers, right under the XP bar */
   document.getElementById('me-stat-grid').innerHTML = `
     <div class="stat-box"><strong>${(user.xp || 0).toLocaleString()}</strong><span>Total XP</span></div>
     <div class="stat-box"><strong>${countChoresDone(currentUser)}</strong><span>Chores done</span></div>
-    <div class="stat-box"><strong>${user.bestStreak || 0}</strong><span>Best streak</span></div>
-    <div class="stat-box"><strong>🛡️ ${user.streakSavers || 0}</strong><span>Streak savers</span></div>
-    <div class="stat-box"><strong>${critterCount}/${CRITTER_CATALOG.length}</strong><span>Critters</span></div>
-    <div class="stat-box"><strong>${user.chestsOpened || 0}</strong><span>Chests opened</span></div>`;
+    <div class="stat-box"><strong>${user.bestStreak || 0}</strong><span>Best streak</span></div>`;
 
-  /* Coal card */
-  const coal = user.coal || 0;
-  document.getElementById('coal-card').innerHTML = `
-    <div class="coal-head"><span>🪨 Lumps of coal</span><strong>${coal}</strong></div>
-    <div class="coal-caption">${coalCaption(coal)}</div>
-    ${coal > 0 ? `<div class="coal-pile">${'🪨'.repeat(Math.min(coal, 30))}${coal > 30 ? ` <small>+${coal - 30}</small>` : ''}</div>` : ''}`;
+  /* Daily goal card: one ring, one line of text, the goal dropdown, and a
+     prominent current-streak counter. No sub-line any more. */
+  const goal = getDailyGoal(user);
+  const count = getDailyCount(user);
+  const met = hasMetGoalToday(user) || count >= goal;
+  setRing('goal-ring', {
+    percent: (Math.min(count, goal) / goal) * 100, size: 60, stroke: 7,
+    color: met ? '#7cd0a2' : '#86a7ee',
+    inner: `<span style="font-size:1.2rem">${Math.min(count, goal)}<small>of ${goal}</small></span>`
+  });
+  document.querySelector('.goal-row').classList.toggle('goal-met', met);
+  document.getElementById('me-goal-select').value = String(goal);
+  document.getElementById('goal-title').textContent = met
+    ? 'Yay - you kept your streak!'
+    : ((user.streak || 0) > 0 ? 'Chores done to keep your streak' : 'Chores done to start your streak');
+  document.getElementById('streak-num-display').textContent = user.streak || 0;
+
+  /* Bag: coal and streak savers, shown as counters (the third slot is just a tease for now) */
+  document.getElementById('bag-coal-count').textContent = user.coal || 0;
+  document.getElementById('bag-savers-count').textContent = user.streakSavers || 0;
 
   renderCritterCatalog();
-}
-
-function coalCaption(n) {
-  if (n === 0) return 'None yet. Lucky you!';
-  if (n <= 2) return 'A humble start.';
-  if (n <= 5) return 'Enough to warm your hands.';
-  if (n <= 10) return 'A respectable pile.';
-  if (n <= 20) return 'You could open a barbecue.';
-  return 'Your coal shed is legendary.';
 }
 
 /* Critters, highest level shown first. Locked ones (no level yet) go at the
@@ -1309,71 +1282,36 @@ function renderCritterCatalog() {
 /* ----- 7f. ACTIVITY TAB: leaderboard + history ----- */
 function isChoreLog(log) { return !log.type || log.type === 'chore'; }   // old logs have no "type"
 
-function renderLeaderboard() {
-  const container = document.getElementById('leaderboard-list');
-  const today = todayStr();
-  let startDate = today;                                   // "today"
-  if (activeLeaderboardTab === 'week') startDate = addDaysStr(today, -6);
-  if (activeLeaderboardTab === 'month') startDate = addDaysStr(today, -29);
+/* "This month" summary: plain per-person totals for whichever month the
+   calendar below is showing - no ranking, no podium, just a shared tally.
+   (With just two of you using this, a full leaderboard felt like overkill;
+   this keeps a bit of "who's pulling their weight" visibility without
+   turning chores into a competition.) */
+function renderMonthSummary() {
+  const container = document.getElementById('month-summary-list');
+  const year = currentCalDate.getFullYear();
+  const month = currentCalDate.getMonth();
+  const prefix = `${year}-${pad2(month + 1)}`;   // e.g. "2026-09" - matches the start of every date this month
 
-  const scores = {};
-  Object.keys(appUsers).forEach(name => { scores[name] = { xp: 0, chores: 0 }; });
+  const totals = {};
+  Object.keys(appUsers).forEach(name => { totals[name] = { chores: 0, xp: 0 }; });
+  completedLogs.forEach(log => {
+    if (!isChoreLog(log) || !log.date || !log.date.startsWith(prefix)) return;
+    if (!totals[log.completedBy]) totals[log.completedBy] = { chores: 0, xp: 0 };
+    totals[log.completedBy].chores += 1;
+    totals[log.completedBy].xp += typeof log.xpEarned === 'number' ? log.xpEarned : 20;   // very old logs had no xpEarned
+  });
 
-  if (activeLeaderboardTab === 'all') {
-    Object.entries(appUsers).forEach(([name, u]) => { scores[name] = { xp: u.xp || 0, chores: countChoresDone(name) }; });
-  } else {
-    completedLogs.forEach(log => {
-      const entry = scores[log.completedBy];
-      if (!entry || !log.date || log.date < startDate || log.date > today) return;
-      entry.xp += typeof log.xpEarned === 'number' ? log.xpEarned : 20;   // very old logs had no xpEarned
-      if (isChoreLog(log)) entry.chores += 1;
-    });
-  }
-
-  const ranked = Object.entries(scores)
-    .map(([name, s]) => {
-      const u = appUsers[name] || {};
-      return { name, xp: s.xp, chores: s.chores, streak: u.streak || 0, level: calculateLevel(u.xp || 0).level, boost: isXpBoostActive(u) };
-    })
-    .sort((a, b) => b.xp - a.xp || b.chores - a.chores);
-
-  const earners = ranked.filter(p => p.xp > 0);
-  if (earners.length === 0) {
-    container.innerHTML = `<div class="empty-state"><strong>Nobody on the board yet</strong>Finish a chore to take the lead!</div>`;
+  const names = Object.keys(totals).sort((a, b) => a.localeCompare(b));
+  if (names.length === 0) {
+    container.innerHTML = `<div class="empty-state">Nobody's completed a chore this month yet.</div>`;
     return;
   }
-
-  /* Podium for the top three (only when there are at least two people to compare) */
-  let podiumHtml = '';
-  let listFrom = 0;
-  if (earners.length >= 2) {
-    const top = earners.slice(0, 3);
-    const medals = ['🥇', '🥈', '🥉'];
-    const slot = (p, i) => `
-      <div class="podium-slot rank-${i + 1}">
-        <div class="podium-name">${escapeHtml(p.name)}</div>
-        <div class="podium-xp">${p.xp.toLocaleString()} XP</div>
-        <div class="podium-block">${medals[i]}</div>
-      </div>`;
-    const order = top.length === 3 ? [1, 0, 2] : [1, 0];      // 2nd | 1st | 3rd, so the winner is in the middle
-    podiumHtml = `<div class="podium">${order.map(i => slot(top[i], i)).join('')}</div>`;
-    listFrom = top.length;
-  }
-
-  const rows = ranked.slice(listFrom).map((p, i) => `
-    <div class="leaderboard-item">
-      <span class="lb-rank">${listFrom + i + 1}</span>
-      <div class="lb-main">
-        <div class="lb-name">${escapeHtml(p.name)} ${p.boost ? '⚡' : ''}</div>
-        <div class="lb-sub">${escapeHtml(getRankTitle(p.level))}, 🔥 ${p.streak}d streak</div>
-      </div>
-      <div class="lb-right">
-        <span class="level-badge">Lvl ${p.level}</span>
-        <div class="lb-xp">${activeLeaderboardTab === 'all' ? '' : '+'}${p.xp.toLocaleString()} XP, ${plural(p.chores, 'chore')}</div>
-      </div>
+  container.innerHTML = names.map(name => `
+    <div class="month-person-row">
+      <span class="month-person-name">${escapeHtml(name)}</span>
+      <span class="month-person-stats">${plural(totals[name].chores, 'chore')} · ${totals[name].xp.toLocaleString()} XP</span>
     </div>`).join('');
-
-  container.innerHTML = podiumHtml + rows;
 }
 
 function renderCalendar() {
@@ -1401,7 +1339,7 @@ function renderCalendar() {
 }
 
 function renderActivityTab() {
-  renderLeaderboard();
+  renderMonthSummary();
   renderCalendar();
 }
 
@@ -1679,6 +1617,7 @@ async function handleBulkEditSubmit(event) {
   const time = document.getElementById('be-time').value;
   const interval = parseInt(document.getElementById('be-interval').value, 10);
   const lastDone = document.getElementById('be-lastdone').value;   // blank = no change
+  const name = ids.length === 1 ? document.getElementById('be-name').value.trim() : '';   // renaming only makes sense for one chore
   const priority = document.getElementById('be-priority').value;
   const addEquipment = bulkEditPicker.getSelected();
   const linkAll = document.getElementById('be-link').checked;
@@ -1687,6 +1626,7 @@ async function handleBulkEditSubmit(event) {
     const task = taskById.get(id);
     if (!task) return;
     const fields = {};                                        // start empty, add only what changed
+    if (name) fields.name = name;
     if (room) fields.room = room;
     if (time) fields.timeTag = time;
     if (interval >= 1) fields.interval = interval;
@@ -2008,6 +1948,13 @@ function openBulkEditModal() {
   if (selectedIds.size === 0) { showToast('Tick some chores first'); return; }
   document.getElementById('bulk-edit-form').reset();
   document.getElementById('bulk-edit-title').textContent = `Edit ${plural(selectedIds.size, 'chore')}`;
+  /* Renaming only makes sense with exactly one chore selected */
+  const nameGroup = document.getElementById('be-name-group');
+  nameGroup.hidden = selectedIds.size !== 1;
+  if (selectedIds.size === 1) {
+    const only = taskById.get([...selectedIds][0]);
+    document.getElementById('be-name').value = only ? only.name : '';
+  }
   bulkEditPicker.setSelected([]);
   openModal('bulk-edit-modal');
 }
@@ -2022,26 +1969,24 @@ function changeMonth(delta) {
 function showDayLogs(dateStr) {
   const dayLogs = completedLogs.filter(l => l.date === dateStr && isChoreLog(l));
   document.getElementById('selected-date-title').textContent = `Completed on ${dateStr}`;
-  document.getElementById('selected-date-tasks').innerHTML = dayLogs.length === 0
-    ? 'No chores refreshed on this day.'
-    : dayLogs.map(l => `• ${escapeHtml(l.name)} <span style="color:var(--sky-deep);font-weight:700">(by ${escapeHtml(l.completedBy)})</span>`).join('<br>');
-}
 
-/* ----- 9h. Activity tab: leaderboard / history sub-view ----- */
-let activityView = 'leaderboard';
-function switchActivityView(view) {
-  activityView = view;
-  document.querySelectorAll('[data-action="switch-activity-view"]').forEach(btn =>
-    btn.classList.toggle('active', btn.dataset.view === view));
-  document.getElementById('activity-leaderboard-view').hidden = view !== 'leaderboard';
-  document.getElementById('activity-history-view').hidden = view !== 'history';
-}
+  if (dayLogs.length === 0) {
+    document.getElementById('selected-date-tasks').innerHTML = 'No chores finished on this day.';
+    return;
+  }
 
-function switchLeaderboardTab(tab) {
-  activeLeaderboardTab = tab;
-  document.querySelectorAll('.tab-btn[id^="tab-"]').forEach(btn => btn.classList.remove('active'));
-  document.getElementById(`tab-${tab}`).classList.add('active');
-  renderLeaderboard();
+  /* A quick per-person tally for the day, above the itemised list */
+  const perPerson = {};
+  dayLogs.forEach(l => {
+    if (!perPerson[l.completedBy]) perPerson[l.completedBy] = { chores: 0, xp: 0 };
+    perPerson[l.completedBy].chores += 1;
+    perPerson[l.completedBy].xp += typeof l.xpEarned === 'number' ? l.xpEarned : 20;
+  });
+  const summaryHtml = `<div class="day-person-summary">${Object.entries(perPerson).map(([name, s]) =>
+    `<span class="day-person-pill">${escapeHtml(name)}: ${plural(s.chores, 'chore')} · ${s.xp} XP</span>`).join('')}</div>`;
+
+  const listHtml = dayLogs.map(l => `• ${escapeHtml(l.name)} <span style="color:var(--sky-deep);font-weight:700">(by ${escapeHtml(l.completedBy)})</span>`).join('<br>');
+  document.getElementById('selected-date-tasks').innerHTML = summaryHtml + listHtml;
 }
 
 /* ----- 9i. Users: switching, adding, removing inactive ones ----- */
@@ -2479,10 +2424,9 @@ const ACTIONS = {
   'open-user-switch': () => openUserModal(),
   'open-chest': () => openChestFlow(),
   'open-critter': el => openCritterLightbox(el.dataset.id),
+  'bag-mystery': () => showToast('More surprises coming soon…'),
 
   // Activity tab
-  'switch-activity-view': el => switchActivityView(el.dataset.view),
-  'switch-lb-tab': el => switchLeaderboardTab(el.dataset.tab),
   'calendar-prev': () => changeMonth(-1),
   'calendar-next': () => changeMonth(1),
   'show-day': el => showDayLogs(el.dataset.date),
@@ -2495,7 +2439,6 @@ const ACTIONS = {
 
   // chore buttons
   'complete-task': el => completeTask(el.dataset.id),
-  'edit-task': el => openEditModal(el.dataset.id),
   'start-task': async el => {
     await startTask(el.dataset.id);
     const row = el.closest('.linked-row');      // if it was in the reward pop-up, tidy the row away

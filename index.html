@@ -13,7 +13,7 @@
     to the bottom of the screen (search "BOTTOM NAV" below):
       Me       - your profile, stats and critter collection
       House    - the chore list (this is what opens first)
-      Activity - the leaderboard and completion history
+      Activity - shared history: who did what, this month
 
     Each tab is a <section class="tab-panel">. app.js shows one at a time by
     setting "hidden" on the other two - look for switchTab() in app.js.
@@ -53,6 +53,14 @@
          ================================================================ -->
     <section class="tab-panel" id="panel-me" hidden>
 
+      <!-- Switch user lives up here now, out of the way of everything else -->
+      <div class="me-top-actions">
+        <button class="btn-header btn-sm" data-action="open-user-switch">
+          <i data-lucide="users"></i> Switch
+        </button>
+      </div>
+
+      <!-- Who you are, and your XP progress -->
       <section class="card user-card">
         <div class="user-top">
           <button class="avatar" id="user-avatar" data-action="open-user-switch" aria-label="Switch user">?</button>
@@ -66,11 +74,24 @@
         <div class="xp-bar-container"><div class="xp-bar-fill" id="xp-bar-fill"></div></div>
         <div class="xp-text"><span id="xp-current-text">0 / 250 XP</span></div>
 
+        <div class="stat-pill stat-boost" id="user-boost-badge" hidden>⚡ 2x XP</div>
+
+        <button class="chest-ready-btn" id="chest-ready-btn" data-action="open-chest" hidden>
+          🧰 <span id="chest-ready-text">A mystery chest is ready!</span>
+        </button>
+      </section>
+
+      <!-- Numbers, right below the XP bar -->
+      <section class="card">
+        <div class="stat-grid" id="me-stat-grid"><!-- filled in by app.js --></div>
+      </section>
+
+      <!-- Daily goal, in its own box -->
+      <section class="card goal-card">
         <div class="goal-row">
           <div id="goal-ring"></div>
           <div class="goal-text">
             <div class="goal-title" id="goal-title">Daily goal</div>
-            <div class="goal-sub" id="goal-sub"></div>
             <label class="goal-select-row">Change goal:
               <select id="me-goal-select" aria-label="Daily goal">
                 <option value="1">1 chore a day</option>
@@ -87,26 +108,32 @@
             </label>
           </div>
         </div>
-
-        <div class="stats-row">
-          <div class="stat-pill" id="user-streak-text">🔥 0 day streak</div>
-          <div class="stat-pill" id="user-savers-text">🛡️ 0 savers</div>
-          <div class="stat-pill stat-boost" id="user-boost-badge" hidden>⚡ 2x XP</div>
+        <div class="streak-display">
+          <span class="streak-flame">🔥</span>
+          <span class="streak-num" id="streak-num-display">0</span>
+          <span class="streak-word">day streak</span>
         </div>
-
-        <button class="chest-ready-btn" id="chest-ready-btn" data-action="open-chest" hidden>
-          🧰 <span id="chest-ready-text">A mystery chest is ready!</span>
-        </button>
-
-        <button class="btn-ghost user-switch-btn" data-action="open-user-switch"><i data-lucide="users"></i> Switch user</button>
       </section>
 
-      <section class="card">
-        <div class="stat-grid" id="me-stat-grid"><!-- filled in by app.js --></div>
-      </section>
-
-      <section class="card coal-card-wrap">
-        <div class="coal-card" id="coal-card"><!-- filled in by app.js --></div>
+      <!-- Bag: coal, streak savers, and one more slot still to be revealed -->
+      <section class="card bag-card">
+        <div class="card-title-row"><h2 class="card-title">🎒 Bag</h2></div>
+        <div class="bag-grid">
+          <div class="bag-box">
+            <span class="bag-emoji">🪨</span>
+            <strong class="bag-count" id="bag-coal-count">0</strong>
+            <span class="bag-label">Lumps of coal</span>
+          </div>
+          <div class="bag-box">
+            <span class="bag-emoji">🛡️</span>
+            <strong class="bag-count" id="bag-savers-count">0</strong>
+            <span class="bag-label">Streak savers</span>
+          </div>
+          <button class="bag-box bag-box-locked" data-action="bag-mystery">
+            <span class="bag-emoji">❓</span>
+            <span class="bag-label">???</span>
+          </button>
+        </div>
       </section>
 
       <section class="card critter-card">
@@ -114,7 +141,6 @@
           <h2 class="card-title">🐾 Cleaning critters</h2>
           <span class="hint" id="critter-count"></span>
         </div>
-        <p class="hint" style="margin-bottom:10px">Tap a critter to take a closer look.</p>
         <div id="critter-carousel" class="critter-carousel"><!-- cards drawn by app.js --></div>
       </section>
     </section>
@@ -124,15 +150,6 @@
          TAB 2: HOUSE  -  the chore list (this is the default tab)
          ================================================================ -->
     <section class="tab-panel" id="panel-house">
-
-      <div class="house-top-actions">
-        <button class="btn-header" data-action="toggle-select-mode" id="select-mode-btn">
-          <i data-lucide="list-checks"></i> Select
-        </button>
-        <button class="btn-header btn-header-primary" data-action="open-add-task">
-          <i data-lucide="plus"></i> Add chore
-        </button>
-      </div>
 
       <section class="card house-card">
         <div class="house-top">
@@ -145,6 +162,17 @@
         <div class="section-title">Rooms <span class="hint">tap a room to filter</span></div>
         <div class="room-scores-container" id="room-scores-list"></div>
       </section>
+
+      <!-- "Edit" turns on Select mode (tap chores, then Edit/Archive/Delete them
+           from the bar at the bottom). "Add" opens the add-chore modal. -->
+      <div class="house-top-actions">
+        <button class="btn-header btn-sm" data-action="toggle-select-mode" id="select-mode-btn">
+          <i data-lucide="pencil"></i> Edit
+        </button>
+        <button class="btn-header btn-header-primary btn-sm" data-action="open-add-task">
+          <i data-lucide="plus"></i> Add
+        </button>
+      </div>
 
       <div class="controls-container">
         <input type="search" id="search-input" class="search-input" placeholder="🔍 Search chores…" aria-label="Search chores">
@@ -200,22 +228,15 @@
          ================================================================ -->
     <section class="tab-panel" id="panel-activity" hidden>
 
-      <div class="leaderboard-tabs">
-        <button class="tab-btn active" data-action="switch-activity-view" data-view="leaderboard">🏆 Leaderboard</button>
-        <button class="tab-btn" data-action="switch-activity-view" data-view="history">📅 History</button>
-      </div>
+      <!-- "This month" totals per person - not a ranked leaderboard, just a shared
+           snapshot of who did what. It follows whichever month the calendar
+           below is showing. -->
+      <section class="card">
+        <div class="card-title-row"><h2 class="card-title">📅 This month</h2></div>
+        <div id="month-summary-list"></div>
+      </section>
 
-      <div id="activity-leaderboard-view">
-        <div class="leaderboard-tabs">
-          <button class="tab-btn active" id="tab-today" data-action="switch-lb-tab" data-tab="today">Today</button>
-          <button class="tab-btn" id="tab-week" data-action="switch-lb-tab" data-tab="week">Week</button>
-          <button class="tab-btn" id="tab-month" data-action="switch-lb-tab" data-tab="month">Month</button>
-          <button class="tab-btn" id="tab-all" data-action="switch-lb-tab" data-tab="all">All time</button>
-        </div>
-        <div id="leaderboard-list"></div>
-      </div>
-
-      <div id="activity-history-view" hidden>
+      <section class="card">
         <div class="cal-nav">
           <button class="action-icon-btn" data-action="calendar-prev"><i data-lucide="chevron-left"></i> Prev</button>
           <strong id="calendar-month-year"></strong>
@@ -226,7 +247,7 @@
           <div class="day-log-title" id="selected-date-title">Select a day to view history</div>
           <div id="selected-date-tasks" class="day-log-body"></div>
         </div>
-      </div>
+      </section>
     </section>
 
 
@@ -234,7 +255,7 @@
     <nav class="bottom-nav" aria-label="Main navigation">
       <button class="nav-btn" data-action="switch-tab" data-tab="me"><i data-lucide="user"></i><span>Me</span></button>
       <button class="nav-btn active" data-action="switch-tab" data-tab="house"><i data-lucide="home"></i><span>House</span></button>
-      <button class="nav-btn" data-action="switch-tab" data-tab="activity"><i data-lucide="trophy"></i><span>Activity</span></button>
+      <button class="nav-btn" data-action="switch-tab" data-tab="activity"><i data-lucide="calendar-days"></i><span>History</span></button>
     </nav>
   </div>
 
@@ -418,6 +439,10 @@
       </div>
       <p class="hint">Only the things you fill in are changed. Everything else stays as it is.</p>
       <form id="bulk-edit-form">
+        <div class="form-group" id="be-name-group" hidden>
+          <label for="be-name">Chore name</label>
+          <input type="text" id="be-name" placeholder="(no change)">
+        </div>
         <div class="form-group">
           <label for="be-room">Room</label>
           <input type="text" id="be-room" list="room-suggestions" placeholder="(no change)">

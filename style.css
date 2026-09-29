@@ -121,8 +121,9 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
    Each is just a vertical stack of cards. */
 .tab-panel { display: flex; flex-direction: column; gap: 16px; }
 
-.house-top-actions { display: flex; gap: 8px; }
+.house-top-actions { display: flex; gap: 8px; margin: 2px 0; }
 .house-top-actions .btn-header { flex: 1; }
+.me-top-actions { display: flex; justify-content: flex-end; }
 .btn-header {
   background: var(--card);
   color: var(--sky-deep);
@@ -139,6 +140,8 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 .btn-header.is-on { background: var(--sky-deep); color: #fff; border-color: var(--sky-deep); }
 .btn-header-primary { background: var(--sky-deep); color: #fff; border-color: var(--sky-deep); }
 .btn-header-primary:hover { background: #4266b3; }
+/* Slightly smaller: used for Edit/Add on the House tab and Switch on the Me tab */
+.btn-header.btn-sm { height: 38px; padding: 0 12px; font-size: 0.82rem; gap: 5px; }
 
 /* ----- Bottom nav: the 3 tabs (Me / House / Activity) -----
    Fixed to the bottom of the screen, like a habit-tracker app. */
@@ -294,20 +297,17 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 }
 .ring-inner small { display: block; font-family: var(--font-body); font-size: 0.6rem; font-weight: 700; color: var(--muted); margin-top: 2px; }
 
-/* ----- Stat pills ----- */
-.stats-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+/* ----- XP boost pill (shown only while a boost is active) ----- */
 .stat-pill {
+  display: inline-block;
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 7px 10px;
   font-size: 0.78rem; font-weight: 700;
-  flex: 1; text-align: center; white-space: nowrap;
+  margin-top: 10px;
 }
 .stat-boost { background: var(--honey-soft); border-color: var(--honey); color: var(--honey-deep); }
-
-.user-actions { display: flex; gap: 8px; margin-top: 12px; }
-.user-actions .btn-ghost { flex: 1; }
 
 /* The "open your chest" button: gently pulses to get noticed */
 .chest-ready-btn {
@@ -324,7 +324,33 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.03); box-shadow: 0 8px 22px -4px rgba(227, 154, 59, 1); }
 }
-.user-switch-btn { width: 100%; margin-top: 12px; }
+
+/* ----- Daily goal card (its own box now, with a big streak counter) ----- */
+.goal-card .goal-row { margin: 0; padding: 0; background: none; }
+.streak-display {
+  display: flex; align-items: baseline; justify-content: center; gap: 6px;
+  margin-top: 14px; padding: 10px;
+  background: var(--honey-soft);
+  border-radius: 12px;
+}
+.streak-flame { font-size: 1.3rem; }
+.streak-num { font-family: var(--font-display); font-size: 1.6rem; font-weight: 600; color: var(--honey-deep); }
+.streak-word { font-size: 0.82rem; font-weight: 700; color: var(--honey-deep); }
+
+/* ----- Bag: coal / streak savers / a mystery slot, styled like the critters ----- */
+.bag-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.bag-box {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 6px;
+  text-align: center;
+}
+.bag-emoji { font-size: 1.7rem; display: block; }
+.bag-count { display: block; font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; margin-top: 4px; }
+.bag-label { display: block; font-size: 0.68rem; font-weight: 700; color: var(--muted); margin-top: 2px; }
+.bag-box-locked { border-style: dashed; color: var(--muted); }
+.bag-box-locked .bag-emoji { opacity: 0.5; }
 
 /* ----- Critters ----- */
 .critter-carousel {
@@ -386,19 +412,19 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 10px 12px;
-  min-width: 128px;
+  padding: 13px 15px;
+  min-width: 148px;
   flex-shrink: 0;
   text-align: left;
   transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 .room-card:hover { box-shadow: var(--shadow); }
 .room-card:active { transform: scale(0.97); }
-.room-card.active-filter { border: 2px solid var(--sky-deep); background: var(--sky-soft); padding: 9px 11px; }
+.room-card.active-filter { border: 2px solid var(--sky-deep); background: var(--sky-soft); padding: 12px 14px; }
 .room-top { display: flex; justify-content: space-between; align-items: center; }
-.room-emoji { font-size: 1.3rem; }
-.room-score-val { font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; }
-.room-card-name { font-size: 0.82rem; font-weight: 800; margin: 4px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-emoji { font-size: 1.45rem; }
+.room-score-val { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; }
+.room-card-name { font-size: 0.9rem; font-weight: 800; margin: 5px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .room-late { font-size: 0.68rem; font-weight: 700; color: var(--muted); margin-top: 4px; }
 
 /* ----- Search & filters ----- */
@@ -475,8 +501,6 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 .oneoff-tag { background: #fff1e0; color: #b45309; }
 
 /* Equipment shown as small chips (replaces the old dotted-underline tooltip) */
-.equip-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
-.equip-mini { font-size: 0.68rem; font-weight: 600; color: var(--muted); background: var(--bg); border: 1px solid var(--line); padding: 2px 7px; border-radius: 20px; }
 .link-chips { font-size: 0.72rem; font-weight: 700; color: var(--sky-deep); margin-bottom: 6px; }
 
 .task-hint {
@@ -646,35 +670,31 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 .cleanup-btn:hover { background: #fbdcda; }
 .modal > .hint { margin-top: 8px; display: block; }
 
-/* ----- Leaderboard ----- */
+/* ----- Tabs (used by the add-chore Single/Bulk switcher) ----- */
 .leaderboard-tabs { display: flex; gap: 4px; margin-bottom: 18px; background: var(--bg); padding: 4px; border-radius: 12px; }
 .tab-btn { flex: 1; border: none; background: transparent; padding: 9px 0; font-size: 0.8rem; font-weight: 800; color: var(--muted); border-radius: 9px; }
 .tab-btn.active { background: #fff; color: var(--sky-deep); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
 
-.podium { display: flex; align-items: flex-end; justify-content: center; gap: 8px; margin: 6px 0 18px; }
-.podium-slot { flex: 1; max-width: 150px; text-align: center; }
-.podium-name { font-weight: 800; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.podium-xp { font-size: 0.75rem; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
-.podium-block {
-  border-radius: 12px 12px 0 0;
-  display: grid; place-items: center;
-  font-size: 1.8rem;
-  color: #fff;
-  background: linear-gradient(180deg, var(--lilac), var(--sky));
+/* ----- "This month" summary (Activity tab) -----
+   Plain side-by-side totals, not a ranked leaderboard - there's no medal or
+   podium here on purpose, this is meant to feel like a shared tally. */
+.month-person-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
 }
-.podium-slot.rank-1 .podium-block { height: 96px; background: linear-gradient(180deg, #f7c96b, #e39a3b); }
-.podium-slot.rank-2 .podium-block { height: 70px; }
-.podium-slot.rank-3 .podium-block { height: 52px; background: linear-gradient(180deg, #e6b08a, #c98456); }
+.month-person-row:last-child { border-bottom: none; }
+.month-person-name { font-weight: 800; }
+.month-person-stats { font-size: 0.82rem; color: var(--muted); font-weight: 700; }
 
-.leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 6px; border-bottom: 1px solid var(--line); gap: 10px; }
-.leaderboard-item:last-child { border-bottom: none; }
-.lb-rank { font-family: var(--font-display); font-weight: 700; color: var(--muted); width: 26px; }
-.lb-main { flex: 1; min-width: 0; }
-.lb-name { font-weight: 800; }
-.lb-sub { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
-.lb-right { text-align: right; }
-.lb-right .level-badge { font-size: 0.8rem; padding: 2px 9px; }
-.lb-xp { font-size: 0.78rem; color: var(--muted); font-weight: 800; margin-top: 3px; }
+/* ----- Per-person totals shown above a selected day's chore list ----- */
+.day-person-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.day-person-pill {
+  font-size: 0.76rem; font-weight: 800;
+  background: var(--sky-soft); color: var(--sky-deep);
+  padding: 4px 10px; border-radius: 20px;
+}
 
 /* ----- Profile ----- */
 .profile-hero { text-align: center; margin-bottom: 18px; }
@@ -687,18 +707,6 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 .stat-box { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 6px; text-align: center; }
 .stat-box strong { display: block; font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; }
 .stat-box span { font-size: 0.68rem; color: var(--muted); font-weight: 700; }
-
-.coal-card { background: linear-gradient(135deg, #3b3f4a, #23262e); color: #e8eaf0; border-radius: 16px; padding: 14px; }
-.coal-head { display: flex; justify-content: space-between; align-items: center; }
-.coal-head strong { font-family: var(--font-display); font-size: 1.6rem; }
-.coal-caption { font-size: 0.8rem; color: #aeb4c4; margin-top: 2px; font-weight: 600; }
-.coal-pile { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 10px; font-size: 1.15rem; line-height: 1; }
-
-.rank-ladder { display: flex; flex-direction: column; gap: 6px; }
-.rank-step { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--bg); font-size: 0.85rem; font-weight: 700; opacity: 0.6; }
-.rank-step.reached { opacity: 1; background: var(--lilac-soft); }
-.rank-step .rs-lvl { margin-left: auto; font-size: 0.72rem; color: var(--muted); }
-.rank-step .rs-reward { font-size: 0.7rem; color: var(--mint-deep); font-weight: 800; }
 
 /* ----- Critter lightbox ----- */
 .critter-lightbox { max-width: 340px; }
