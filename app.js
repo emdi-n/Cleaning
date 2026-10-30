@@ -283,6 +283,13 @@ let localTasks = readStored('cleanDeckLocalTasks', []);                // chores
 let completedLogs = readStored('cleanDeckLogs', []);                   // history of every completion
 let firestoreTasks = [];                                               // chores loaded from Firebase
 
+/* Houses: e.g. "Home" and "Mum's place while we're staying there". Your level,
+   XP, streak and critters are shared across every house - only the chore
+   list, rooms and cleanliness score are separate per house. */
+let currentHouseId = localStorage.getItem('cleanDeckHouse') || '';
+let localHouses = readStored('cleanDeckLocalHouses', []);             // houses (only used without Firebase)
+let firestoreHouses = [];                                              // houses loaded from Firebase
+
 let selectedRoomFilter = null;       // which room card is tapped, if any
 let showAllTasks = false;
 let showArchived = false;
@@ -318,17 +325,97 @@ function initFirebase() {
 }
 
 function getAllTasks() { return isFirebaseConfigured ? firestoreTasks : localTasks; }
+function getAllHouses() { return isFirebaseConfigured ? firestoreHouses : localHouses; }
 
 function saveLocalData() {
   localStorage.setItem('cleanDeckLocalTasks', JSON.stringify(localTasks));
   localStorage.setItem('cleanDeckLogs', JSON.stringify(completedLogs));
   localStorage.setItem('cleanDeckUsers', JSON.stringify(appUsers));
+  localStorage.setItem('cleanDeckLocalHouses', JSON.stringify(localHouses));
 }
 
 /* Make a fresh unique id for a new chore */
 function newTaskId() {
   if (isFirebaseConfigured) return db.collection('chores').doc().id;
   return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+/* Make a fresh unique id for a new house */
+function newHouseId() {
+  if (isFirebaseConfigured) return db.collection('houses').doc().id;
+  return 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+/* Create OR update a house. "fields" only needs the things that changed. */
+async function saveHouseDoc(id, fields) {
+  if (isFirebaseConfigured) {
+    await db.collection('houses').doc(id).set(fields, { merge: true });
+  } else {
+    const existing = localHouses.find(h => h.id === id);
+    if (existing) Object.assign(existing, fields);
+    else localHouses.push({ id, ...fields });
+    saveLocalData();
+    ensureDefaultHouse();
+    render();
+  }
+}
+
+async function deleteHouseDoc(id) {
+  if (isFirebaseConfigured) {
+    await db.collection('houses').doc(id).delete();
+  } else {
+    localHouses = localHouses.filter(h => h.id !== id);
+    saveLocalData();
+    render();
+  }
+}
+
+/* ----- Houses: helpers used all over the app -----
+   If you've never set up a house before (or you're upgrading from an older
+   version of CleanDeck that didn't have houses), we quietly create one
+   called "Home" and treat it as the home for any chore/log that doesn't
+   have a houseId yet - so nothing you already had gets lost or hidden. */
+function ensureDefaultHouse() {
+  const houses = getAllHouses();
+  if (houses.length === 0) {
+    if (ensureDefaultHouse._creating) return;   // don't fire off two "Home" houses while the first save is in flight
+    ensureDefaultHouse._creating = true;
+    const id = newHouseId();
+    currentHouseId = id;
+    localStorage.setItem('cleanDeckHouse', id);
+    saveHouseDoc(id, { name: 'Home', paused: false, isDefault: true, createdAt: Date.now() })
+      .then(() => { ensureDefaultHouse._creating = false; });
+    return;
+  }
+  if (!currentHouseId || !houses.some(h => h.id === currentHouseId)) {
+    currentHouseId = (houses.find(h => h.isDefault) || houses[0]).id;
+    localStorage.setItem('cleanDeckHouse', currentHouseId);
+  }
+}
+
+function defaultHouseId() {
+  const h = getAllHouses().find(x => x.isDefault);
+  return h ? h.id : (getAllHouses()[0] || {}).id || '';
+}
+
+/* Chores and logs made before "houses" existed have no houseId - treat them
+   as belonging to the original default house. */
+function taskHouseId(t) { return t.houseId || defaultHouseId(); }
+function logHouseId(l) { return l.houseId || defaultHouseId(); }
+
+function currentHouse() { return getAllHouses().find(h => h.id === currentHouseId) || null; }
+function isHousePaused(houseId) { const h = getAllHouses().find(x => x.id === houseId); return !!(h && h.paused); }
+
+/* Every chore that lives in a house (ignores whether the house is paused -
+   used for things like room suggestions and the archived-jobs list). */
+function tasksForHouse(houseId) { return getAllTasks().filter(t => taskHouseId(t) === houseId); }
+
+/* The chores that should actually show up: if the house is paused, "only
+   when we're there" chores (the default) are hidden entirely - "ongoing"
+   ones (e.g. dusting) keep showing and counting as normal. */
+function visibleTasksForHouse(houseId) {
+  const paused = isHousePaused(houseId);
+  return tasksForHouse(houseId).filter(t => !paused || t.scope === 'ongoing');
 }
 
 /* Create OR update a chore. "fields" only needs the things that changed. */
@@ -392,9 +479,10 @@ async function addLogEntry(entry) {
 function startRealtimeListeners() {
   let choresLoaded = false;
   let usersLoaded = false;
+  let housesLoaded = false;
   let firstReadyHandled = false;
   const markReady = () => {
-    if (!(choresLoaded && usersLoaded)) return;
+    if (!(choresLoaded && usersLoaded && housesLoaded)) return;
     dataReady = true;
     if (!firstReadyHandled) {               // the first time everything has arrived...
       firstReadyHandled = true;
@@ -407,6 +495,13 @@ function startRealtimeListeners() {
     choresLoaded = true; markReady();
     render();
   }, err => { console.error(err); showToast('⚠️ Could not load chores.'); });
+
+  db.collection('houses').onSnapshot(snapshot => {
+    firestoreHouses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    ensureDefaultHouse();
+    housesLoaded = true; markReady();
+    render();
+  }, err => { console.error(err); showToast('⚠️ Could not load houses.'); });
 
   db.collection('users').onSnapshot(snapshot => {
     /* Rebuild the user list from the database, so deleted users disappear too. */
@@ -740,10 +835,10 @@ function getEquipment(task) {
   return [];
 }
 
-/* Every equipment name used anywhere (so custom ones you typed show up as options) */
+/* Every equipment name used in this house (so custom ones you typed show up as options) */
 function collectKnownEquipment() {
   const all = [];
-  getAllTasks().forEach(t => all.push(...getEquipment(t)));
+  tasksForHouse(currentHouseId).forEach(t => all.push(...getEquipment(t)));
   return all;
 }
 
@@ -1001,7 +1096,7 @@ function renderRoomScores(analysis) {
 /* Keep the suggestion list for the "Room" text boxes up to date */
 function updateRoomDatalist() {
   const rooms = new Set(['General', 'Kitchen', 'Bathroom', 'Living Room', 'Bedroom', 'Hallway']);
-  getAllTasks().forEach(t => { if (t.room) rooms.add(t.room.trim()); });
+  tasksForHouse(currentHouseId).forEach(t => { if (t.room) rooms.add(t.room.trim()); });
   document.getElementById('room-suggestions').innerHTML =
     [...rooms].sort().map(r => `<option value="${escapeHtml(r)}"></option>`).join('');
 }
@@ -1097,7 +1192,7 @@ function renderTaskList(containerId, tasks, emptyHtml) {
 }
 
 function renderArchived() {
-  const archived = getAllTasks().filter(t => t.archived)
+  const archived = tasksForHouse(currentHouseId).filter(t => t.archived)
     .sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0))
     .map(computeTaskBasics);
   const section = document.getElementById('archived-section');
@@ -1109,10 +1204,26 @@ function renderArchived() {
     archived.map(t => taskCardHtml(t, { archived: true })).join('');
 }
 
+/* Which house you're looking at, and whether it's paused */
+function renderHouseSwitchBar() {
+  const house = currentHouse();
+  document.getElementById('current-house-name').textContent = house ? house.name : 'Choose a house';
+
+  const paused = !!(house && house.paused);
+  const pauseBtn = document.getElementById('house-pause-btn');
+  pauseBtn.classList.toggle('is-paused', paused);
+  document.getElementById('house-pause-btn-text').textContent = paused ? 'Unpause house' : 'Pause house';
+  document.getElementById('house-pause-icon').textContent = paused ? '▶' : '⏸';
+  document.getElementById('paused-banner').hidden = !paused;
+}
+
 /* ----- 7d. HOUSE TAB: the chore list ----- */
 function renderHouseTab() {
-  const allTasks = getAllTasks();
-  taskById = new Map(allTasks.map(t => [t.id, t]));
+  renderHouseSwitchBar();
+
+  const allTasks = visibleTasksForHouse(currentHouseId);        // hides "only here" chores while paused
+  const houseTotal = tasksForHouse(currentHouseId);               // for the empty-state message below
+  taskById = new Map(getAllTasks().map(t => [t.id, t]));          // lookups by id still need every house
 
   const analysis = analyseTasks(allTasks);
   lastAnalysis = analysis;
@@ -1154,13 +1265,16 @@ function renderHouseTab() {
   renderTaskList('in-progress-list', inProgress);
 
   const stillLoading = isFirebaseConfigured && !dataReady;
+  const paused = isHousePaused(currentHouseId);
   const emptyRecommended = stillLoading
     ? `<div class="empty-state"><strong>Loading your chores…</strong>Just a moment.</div>`
     : filtersActive
       ? `<div class="empty-state"><strong>No chores match</strong>Try clearing your filters.</div>`
       : (allTasks.some(t => !t.archived)
           ? `<div class="empty-state"><strong>🎉 All caught up!</strong>Nothing left to recommend right now.</div>`
-          : `<div class="empty-state"><strong>No chores yet</strong>Tap "Add chore" above to create your first one.</div>`);
+          : (paused && houseTotal.some(t => !t.archived)
+              ? `<div class="empty-state"><strong>⏸ Paused</strong>No ongoing chores here. Unpause to see the rest.</div>`
+              : `<div class="empty-state"><strong>No chores yet</strong>Tap "Add chore" above to create your first one.</div>`));
   renderTaskList('top-3-list', recommended, emptyRecommended);
 
   renderTaskList('all-tasks-list', others,
@@ -1293,6 +1407,14 @@ function renderCritterCatalog() {
 /* ----- 7f. ACTIVITY TAB: leaderboard + history ----- */
 function isChoreLog(log) { return !log.type || log.type === 'chore'; }   // old logs have no "type"
 
+/* History is scoped to whichever house you're currently looking at - like
+   switching houses changes which chore list you see, it also changes which
+   history you see. (XP/streak totals on the Me tab stay global - see
+   countChoresDone(), which deliberately does NOT filter by house.) */
+function houseChoreLogs() {
+  return completedLogs.filter(l => isChoreLog(l) && logHouseId(l) === currentHouseId);
+}
+
 /* "This month" summary: plain per-person totals for whichever month the
    calendar below is showing - no ranking, no podium, just a shared tally.
    (With just two of you using this, a full leaderboard felt like overkill;
@@ -1306,8 +1428,8 @@ function renderMonthSummary() {
 
   const totals = {};
   Object.keys(appUsers).forEach(name => { totals[name] = { chores: 0, xp: 0 }; });
-  completedLogs.forEach(log => {
-    if (!isChoreLog(log) || !log.date || !log.date.startsWith(prefix)) return;
+  houseChoreLogs().forEach(log => {
+    if (!log.date || !log.date.startsWith(prefix)) return;
     if (!totals[log.completedBy]) totals[log.completedBy] = { chores: 0, xp: 0 };
     totals[log.completedBy].chores += 1;
     totals[log.completedBy].xp += typeof log.xpEarned === 'number' ? log.xpEarned : 20;   // very old logs had no xpEarned
@@ -1331,7 +1453,7 @@ function renderCalendar() {
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   document.getElementById('calendar-month-year').textContent = `${monthNames[month]} ${year}`;
 
-  const choreLogs = completedLogs.filter(isChoreLog);
+  const choreLogs = houseChoreLogs();
   const today = todayStr();
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1436,6 +1558,12 @@ async function completeTask(id) {
   const task = getAllTasks().find(t => t.id === id);
   if (!task) return;
 
+  const houseId = taskHouseId(task);
+  if (isHousePaused(houseId) && task.scope !== 'ongoing') {
+    showToast('That house is paused right now.');
+    return;
+  }
+
   const today = todayStr();
   const alreadyByMe = completedLogs.some(l =>
     isChoreLog(l) && l.taskId === id && l.date === today && l.completedBy === currentUser);
@@ -1490,7 +1618,7 @@ async function completeTask(id) {
     if (task.oneOff) { taskFields.archived = true; taskFields.archivedAt = Date.now(); }   // finished one-off jobs tidy themselves away
     await saveTaskDoc(id, taskFields);
     await addLogEntry({
-      type: 'chore', taskId: id, name: task.name, date: today,
+      type: 'chore', taskId: id, name: task.name, date: today, houseId,
       timestamp: Date.now(), completedBy: currentUser, xpEarned: totalXp
     });
   } catch (error) {
@@ -1636,6 +1764,7 @@ async function handleBulkEditSubmit(event) {
   const addToHistory = document.getElementById('be-lastdone-history').checked;
   const name = ids.length === 1 ? document.getElementById('be-name').value.trim() : '';   // renaming only makes sense for one chore
   const priority = document.getElementById('be-priority').value;
+  const scope = document.getElementById('be-scope').value;
   const addEquipment = bulkEditPicker.getSelected();
   const linkAll = document.getElementById('be-link').checked;
 
@@ -1650,6 +1779,7 @@ async function handleBulkEditSubmit(event) {
     if (lastDone) fields.lastDone = lastDone;                   // a manual correction, not a "completion"
     if (priority === 'yes') fields.isHighPriority = true;
     if (priority === 'no') fields.isHighPriority = false;
+    if (scope) fields.scope = scope;
     if (addEquipment.length) fields.equipment = unionLists(getEquipment(task), addEquipment);
     if (linkAll && ids.length > 1) fields.linkedTaskIds = unionLists(getLinkedIds(task), ids.filter(x => x !== id));
     if (Object.keys(fields).length > 0) await saveTaskDoc(id, fields);
@@ -1658,7 +1788,7 @@ async function handleBulkEditSubmit(event) {
        and it earns no XP (it isn't a real completion). */
     if (lastDone && addToHistory) {
       await addLogEntry({
-        type: 'chore', taskId: id, name: fields.name || task.name, date: lastDone,
+        type: 'chore', taskId: id, name: fields.name || task.name, date: lastDone, houseId: taskHouseId(task),
         timestamp: Date.now(), completedBy: 'Unknown', xpEarned: 0
       });
     }
@@ -1768,7 +1898,7 @@ let bulkEditPicker = null;
 function renderLinkPicker(excludeId, selectedIds) {
   const container = document.getElementById('task-link-picker');
   document.getElementById('link-search').value = '';
-  const others = getAllTasks()
+  const others = tasksForHouse(currentHouseId)
     .filter(t => t.id !== excludeId && !t.archived)
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
@@ -1856,6 +1986,7 @@ function openEditModal(id) {
   document.getElementById('task-lastdone').value = t.lastDone || todayStr();
   document.getElementById('task-priority').checked = !!t.isHighPriority;
   document.getElementById('task-oneoff').checked = !!t.oneOff;
+  document.getElementById('task-ongoing').checked = t.scope === 'ongoing';
   document.getElementById('task-xp-override').value = t.xpOverride || '';
   document.getElementById('modal-archive-btn').hidden = false;
   document.getElementById('modal-delete-btn').hidden = false;
@@ -1887,6 +2018,7 @@ async function handleSingleSubmit(event) {
     lastDone: document.getElementById('task-lastdone').value,
     isHighPriority: document.getElementById('task-priority').checked,
     oneOff: document.getElementById('task-oneoff').checked,
+    scope: document.getElementById('task-ongoing').checked ? 'ongoing' : 'onlyHere',
     xpOverride: overrideRaw > 0 ? clamp(overrideRaw, 1, 500) : null,    // null = automatic
     linkedTaskIds: linkIds
   };
@@ -1894,7 +2026,7 @@ async function handleSingleSubmit(event) {
   try {
     if (isNew) {
       const newId = newTaskId();
-      await saveTaskDoc(newId, { ...fields, archived: false, inProgressBy: null, inProgressAt: null, lastDoneBy: null });
+      await saveTaskDoc(newId, { ...fields, houseId: currentHouseId, archived: false, inProgressBy: null, inProgressAt: null, lastDoneBy: null });
       await syncLinks(newId, [], linkIds);
     } else {
       const oldLinks = getLinkedIds(taskById.get(id) || {});
@@ -1953,8 +2085,8 @@ async function handleBulkSubmit(event) {
     equipment: bulkAddPicker.getSelected(),
     interval: parseInt(document.getElementById('bulk-interval').value, 10) || 14,
     lastDone: document.getElementById('bulk-lastdone').value,
-    isHighPriority: false, oneOff: false, xpOverride: null, linkedTaskIds: [],
-    archived: false, inProgressBy: null, inProgressAt: null, lastDoneBy: null
+    isHighPriority: false, oneOff: false, scope: 'onlyHere', xpOverride: null, linkedTaskIds: [],
+    houseId: currentHouseId, archived: false, inProgressBy: null, inProgressAt: null, lastDoneBy: null
   };
 
   try {
@@ -1993,7 +2125,7 @@ function changeMonth(delta) {
 }
 
 function showDayLogs(dateStr) {
-  const dayLogs = completedLogs.filter(l => l.date === dateStr && isChoreLog(l));
+  const dayLogs = houseChoreLogs().filter(l => l.date === dateStr);
   document.getElementById('selected-date-title').textContent = `Completed on ${dateStr}`;
 
   if (dayLogs.length === 0) {
@@ -2107,6 +2239,148 @@ async function cleanupInactiveUsers() {
   for (const u of list) await deleteUserDoc(u.name);
   showToast(`Removed ${plural(list.length, 'user')}`);
   renderUserList();
+  render();
+}
+
+/* ----- 9j. Houses: switching, adding, pausing, deleting ----- */
+function openHouseModal() {
+  document.getElementById('house-name-input').value = '';
+  renderHouseList();
+  openModal('house-modal');
+}
+
+function renderHouseList() {
+  const container = document.getElementById('house-list');
+  const houses = [...getAllHouses()].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  if (houses.length === 0) {
+    container.innerHTML = `<p class="hint">No houses yet. Add the first one below.</p>`;
+    return;
+  }
+  container.innerHTML = houses.map(h => {
+    const choreCount = tasksForHouse(h.id).filter(t => !t.archived).length;
+    const isCurrent = h.id === currentHouseId;
+    return `
+      <div class="user-row house-row ${isCurrent ? 'current' : ''}">
+        <button class="house-row-main" data-action="switch-house" data-id="${escapeHtml(h.id)}">
+          <span class="avatar">🏠</span>
+          <span>
+            <div class="user-row-name">${escapeHtml(h.name)}</div>
+            <div class="user-row-sub">${plural(choreCount, 'chore')}${h.paused ? ' · ⏸ Paused' : ''}</div>
+          </span>
+        </button>
+        <div class="house-row-actions">
+          <button class="icon-btn" data-action="toggle-house-pause-id" data-id="${escapeHtml(h.id)}" title="${h.paused ? 'Unpause' : 'Pause'}" aria-label="${h.paused ? 'Unpause' : 'Pause'} ${escapeHtml(h.name)}">
+            <i data-lucide="${h.paused ? 'play' : 'pause'}"></i>
+          </button>
+          ${houses.length > 1 ? `<button class="icon-btn" data-action="delete-house" data-id="${escapeHtml(h.id)}" title="Delete house" aria-label="Delete ${escapeHtml(h.name)}"><i data-lucide="trash-2"></i></button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  refreshIcons();
+}
+
+function switchHouse(id) {
+  if (!getAllHouses().some(h => h.id === id)) return;
+  currentHouseId = id;
+  localStorage.setItem('cleanDeckHouse', id);
+  selectedRoomFilter = null;    // a room filter from the old house won't mean anything here
+  closeModals();
+  render();
+}
+
+async function handleHouseSubmit(event) {
+  event.preventDefault();
+  const name = document.getElementById('house-name-input').value.trim().slice(0, 40);
+  if (!name) return;
+  const id = newHouseId();
+  await saveHouseDoc(id, { name, paused: false, isDefault: false, createdAt: Date.now() });
+  currentHouseId = id;
+  localStorage.setItem('cleanDeckHouse', id);
+  closeModals();
+  showToast(`🏠 Added "${name}"`);
+  render();
+}
+
+async function toggleHousePauseById(id) {
+  const house = getAllHouses().find(h => h.id === id);
+  if (!house) return;
+  await saveHouseDoc(id, { paused: !house.paused });
+  renderHouseList();
+  render();
+  showToast(house.paused ? `▶ Unpaused ${house.name}` : `⏸ Paused ${house.name}`);
+}
+
+function toggleCurrentHousePause() {
+  if (currentHouseId) toggleHousePauseById(currentHouseId);
+}
+
+async function deleteHouse(id) {
+  const house = getAllHouses().find(h => h.id === id);
+  if (!house) return;
+  if (getAllHouses().length <= 1) { showToast("You need at least one house."); return; }
+
+  const choreCount = tasksForHouse(id).length;
+  const warn = choreCount > 0 ? ` This also deletes its ${plural(choreCount, 'chore')} (and their history).` : '';
+  if (!confirm(`Delete "${house.name}"?${warn} This can't be undone.`)) return;
+
+  for (const t of tasksForHouse(id)) await deleteTask(t.id, true);
+  await deleteHouseDoc(id);
+
+  if (currentHouseId === id) {
+    const remaining = getAllHouses().filter(h => h.id !== id);
+    currentHouseId = (remaining.find(h => h.isDefault) || remaining[0] || {}).id || '';
+    localStorage.setItem('cleanDeckHouse', currentHouseId);
+  }
+  showToast(`Deleted "${house.name}"`);
+  renderHouseList();
+  render();
+}
+
+/* ----- 9k. Copying chores to another house ----- */
+function openCopyToHouseModal() {
+  if (selectedIds.size === 0) { showToast('Tick some chores first'); return; }
+  const container = document.getElementById('copy-house-list');
+  const others = getAllHouses().filter(h => h.id !== currentHouseId)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  if (others.length === 0) {
+    container.innerHTML = `<p class="hint">Add another house first (from the 🏠 button on the House tab), then you can copy chores into it.</p>`;
+  } else {
+    container.innerHTML = others.map(h => `
+      <button class="user-row" data-action="copy-selected-to-house" data-id="${escapeHtml(h.id)}">
+        <span class="avatar">🏠</span>
+        <span><div class="user-row-name">${escapeHtml(h.name)}</div></span>
+      </button>`).join('');
+  }
+  openModal('copy-house-modal');
+}
+
+async function copySelectedToHouse(destHouseId) {
+  const ids = [...selectedIds];
+  if (ids.length === 0) return;
+  const dest = getAllHouses().find(h => h.id === destHouseId);
+  if (!dest) return;
+
+  const today = todayStr();
+  await Promise.all(ids.map(id => {
+    const task = taskById.get(id);
+    if (!task) return Promise.resolve();
+    /* A fresh copy: today as its last-done date, not archived or mid-progress,
+       and no links (they'd point at chores that don't exist in the other house). */
+    return saveTaskDoc(newTaskId(), {
+      name: task.name, room: task.room || 'General', timeTag: task.timeTag || 'medium',
+      equipment: getEquipment(task), interval: task.interval || 14, lastDone: today,
+      isHighPriority: !!task.isHighPriority, oneOff: !!task.oneOff, scope: task.scope || 'onlyHere',
+      xpOverride: task.xpOverride || null, linkedTaskIds: [],
+      houseId: destHouseId, archived: false, inProgressBy: null, inProgressAt: null, lastDoneBy: null
+    });
+  }));
+
+  closeModals();
+  selectMode = false;
+  selectedIds.clear();
+  showToast(`Copied ${plural(ids.length, 'chore')} to "${dest.name}"`);
   render();
 }
 
@@ -2445,6 +2719,8 @@ const ACTIONS = {
   // House tab top buttons
   'toggle-select-mode': () => toggleSelectMode(),
   'open-add-task': () => openAddChoreModal(),
+  'open-house-modal': () => openHouseModal(),
+  'toggle-house-pause': () => toggleCurrentHousePause(),
 
   // Me tab
   'open-user-switch': () => openUserModal(),
@@ -2489,6 +2765,7 @@ const ACTIONS = {
   'toggle-select': el => toggleSelect(el.dataset.id),
   'select-all-visible': () => selectAllVisible(),
   'open-bulk-edit': () => openBulkEditModal(),
+  'open-copy-to-house': () => openCopyToHouseModal(),
   'bulk-archive': () => bulkArchive(),
   'bulk-delete': () => bulkDelete(),
 
@@ -2496,6 +2773,10 @@ const ACTIONS = {
   'close-modals': () => closeModals(),
   'choose-user': el => chooseUser(el.dataset.name),
   'cleanup-users': () => cleanupInactiveUsers(),
+  'switch-house': el => switchHouse(el.dataset.id),
+  'toggle-house-pause-id': el => toggleHousePauseById(el.dataset.id),
+  'delete-house': el => deleteHouse(el.dataset.id),
+  'copy-selected-to-house': el => copySelectedToHouse(el.dataset.id),
 
   // rewards and chest
   'close-reward': () => closeRewardModal(),
@@ -2523,6 +2804,7 @@ function wireEvents() {
   document.getElementById('bulk-form').addEventListener('submit', handleBulkSubmit);
   document.getElementById('bulk-edit-form').addEventListener('submit', handleBulkEditSubmit);
   document.getElementById('user-form').addEventListener('submit', handleUserSubmit);
+  document.getElementById('house-form').addEventListener('submit', handleHouseSubmit);
 
   /* Live updates as you type */
   document.getElementById('search-input').addEventListener('input', renderHouseTab);
@@ -2562,6 +2844,7 @@ function wireEvents() {
 function init() {
   initFirebase();
   Object.keys(appUsers).forEach(initUserData);
+  if (!isFirebaseConfigured) ensureDefaultHouse();   // Firebase mode does this once houses load
 
   taskEquipmentPicker = createEquipmentPicker('task-equipment-picker');
   bulkAddPicker = createEquipmentPicker('bulk-add-equipment-picker');

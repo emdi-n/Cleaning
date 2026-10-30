@@ -151,6 +151,20 @@
          ================================================================ -->
     <section class="tab-panel" id="panel-house">
 
+      <!-- Which house you're looking at. XP/streak/critters are shared across
+           houses - only the chore list, rooms and cleanliness score change. -->
+      <div class="house-switch-bar">
+        <button class="house-switch-btn" data-action="open-house-modal">
+          <span>🏠</span> <span id="current-house-name">Home</span> <i data-lucide="chevron-down"></i>
+        </button>
+        <button class="house-pause-btn" id="house-pause-btn" data-action="toggle-house-pause">
+          <span id="house-pause-icon">⏸</span> <span id="house-pause-btn-text">Pause house</span>
+        </button>
+      </div>
+      <div class="paused-banner" id="paused-banner" hidden>
+        ⏸ <span>This house is paused - only ongoing chores are shown.</span>
+      </div>
+
       <section class="card house-card">
         <div class="house-top">
           <div id="house-ring"></div>
@@ -264,6 +278,7 @@
     <span class="select-count" id="select-count">0 selected</span>
     <button class="btn-small" data-action="select-all-visible">Select all</button>
     <button class="btn-small btn-small-primary" data-action="open-bulk-edit">Edit</button>
+    <button class="btn-small" data-action="open-copy-to-house">Copy to…</button>
     <button class="btn-small" data-action="bulk-archive">Archive</button>
     <button class="btn-small btn-small-danger" data-action="bulk-delete">Delete</button>
     <button class="btn-small" data-action="toggle-select-mode">Done</button>
@@ -294,6 +309,37 @@
         <i data-lucide="user-x"></i> Remove inactive users
       </button>
       <p class="hint">Removes people with no XP, or nobody who has done a chore for a long time. You'll see the list and confirm first.</p>
+    </div>
+  </div>
+
+  <!-- ===== Switch house / manage houses ===== -->
+  <div class="modal-overlay" id="house-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Houses</h2>
+        <button class="icon-btn" data-action="close-modals" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div id="house-list" class="user-list"></div>
+      <form id="house-form">
+        <div class="form-group">
+          <label for="house-name-input">Add another house</label>
+          <input type="text" id="house-name-input" placeholder="e.g. Mum's, Flat in Leeds" maxlength="40" autocomplete="off">
+        </div>
+        <button type="submit" class="btn-primary">Add &amp; switch</button>
+      </form>
+      <p class="hint">Your level, XP, streak, Bag and critters are shared across every house - only the chore list, rooms and cleanliness score are separate per house.</p>
+    </div>
+  </div>
+
+  <!-- ===== Copy selected chores to another house ===== -->
+  <div class="modal-overlay" id="copy-house-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Copy to another house</h2>
+        <button class="icon-btn" data-action="close-modals" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <p class="hint">Copies the selected chores into another house as fresh chores (today as their last-done date). The originals stay here.</p>
+      <div id="copy-house-list" class="user-list"></div>
     </div>
   </div>
 
@@ -365,6 +411,8 @@
           <label class="check-row"><input type="checkbox" id="task-priority"> <span>★ High priority</span></label>
           <label class="check-row"><input type="checkbox" id="task-oneoff"> <span>One-off job <em>(archives itself when done)</em></span></label>
           <p class="hint" id="oneoff-hint" hidden>For one-off jobs, "repeat every" means how many days you have to finish it.</p>
+
+          <label class="check-row"><input type="checkbox" id="task-ongoing"> <span>🔁 Ongoing <em>(still needed even while this house is paused, e.g. dusting)</em></span></label>
 
           <div class="form-group">
             <label>Linked chores <span class="hint">related jobs you might do together or in order</span></label>
@@ -472,6 +520,14 @@
             <option value="">(no change)</option>
             <option value="yes">★ Make high priority</option>
             <option value="no">Remove high priority</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="be-scope">When this applies</label>
+          <select id="be-scope">
+            <option value="">(no change)</option>
+            <option value="ongoing">🔁 Ongoing - needed even while this house is paused</option>
+            <option value="onlyHere">📍 Only while this house isn't paused</option>
           </select>
         </div>
         <div class="form-group">

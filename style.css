@@ -449,6 +449,33 @@ h1 { font-size: 1.45rem; line-height: 1.1; }
 }
 .clear-filter-btn { background: none; border: none; color: var(--sky-deep); font-weight: 800; text-decoration: underline; }
 
+/* ----- House switcher (top of House tab) ----- */
+.house-switch-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.house-switch-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+  padding: 8px 14px; font-weight: 800; font-size: 0.92rem;
+}
+.house-switch-btn svg { width: 16px; height: 16px; color: var(--muted); }
+.house-pause-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+  padding: 7px 12px; font-size: 0.78rem; font-weight: 700; color: var(--muted);
+}
+.house-pause-btn.is-paused { background: var(--honey-soft); color: var(--honey-deep); border-color: #f1d9a4; }
+.paused-banner {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--honey-soft); color: var(--honey-deep);
+  padding: 9px 12px; border-radius: 10px;
+  font-size: 0.85rem; font-weight: 700;
+  margin-bottom: 16px;
+}
+
+/* House rows (reuse .user-row's look, with extra icon buttons alongside) */
+.house-row { padding: 6px 6px 6px 10px; }
+.house-row-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; background: none; border: none; text-align: left; padding: 4px; }
+.house-row-actions { display: flex; gap: 2px; flex-shrink: 0; }
+
 .top-3-container { margin-bottom: 22px; }
 #in-progress-section { margin-bottom: 22px; }
 
