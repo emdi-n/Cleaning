@@ -349,6 +349,7 @@ function newHouseId() {
 /* Create OR update a house. "fields" only needs the things that changed. */
 async function saveHouseDoc(id, fields) {
   if (isFirebaseConfigured) {
+    if ((firestoreHouses.find(h => h.id === id) || {}).fallback) { showToast('Houses need the updated Firestore rules first.'); return; }
     await db.collection('houses').doc(id).set(fields, { merge: true });
   } else {
     const existing = localHouses.find(h => h.id === id);
@@ -501,7 +502,16 @@ function startRealtimeListeners() {
     ensureDefaultHouse();
     housesLoaded = true; markReady();
     render();
-  }, err => { console.error(err); showToast('⚠️ Could not load houses.'); });
+  }, err => {
+    /* Most likely your Firestore rules don't allow the new "houses" collection yet.
+       Carry on with a built-in "Home" house so the app still works. */
+    console.error(err);
+    firestoreHouses = [{ id: 'home', name: 'Home', paused: false, isDefault: true, fallback: true }];
+    ensureDefaultHouse();
+    housesLoaded = true; markReady();
+    render();
+    showToast('⚠️ Houses are blocked by your Firestore rules - see the update note.');
+  });
 
   db.collection('users').onSnapshot(snapshot => {
     /* Rebuild the user list from the database, so deleted users disappear too. */
@@ -2035,7 +2045,7 @@ async function handleSingleSubmit(event) {
     }
   } catch (error) {
     console.error(error);
-    showToast('⚠️ Could not save that chore.');
+    showToast('⚠️ Could not save that chore. If this keeps happening, your Firestore rules may need updating.');
     return;
   }
   closeModals();
@@ -2294,7 +2304,14 @@ async function handleHouseSubmit(event) {
   const name = document.getElementById('house-name-input').value.trim().slice(0, 40);
   if (!name) return;
   const id = newHouseId();
-  await saveHouseDoc(id, { name, paused: false, isDefault: false, createdAt: Date.now() });
+  try {
+    await saveHouseDoc(id, { name, paused: false, isDefault: false, createdAt: Date.now() });
+  } catch (e) {
+    console.error(e);
+    showToast('⚠️ Could not save the house. Check your Firestore rules.');
+    return;
+  }
+  if (!getAllHouses().some(h => h.id === id)) return;   // blocked (fallback mode)
   currentHouseId = id;
   localStorage.setItem('cleanDeckHouse', id);
   closeModals();
